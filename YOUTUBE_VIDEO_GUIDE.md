@@ -5,6 +5,7 @@
 
 ## Descripción del Video
 
+
 En este video te muestro cómo desarrollé **PaliWallet**, una aplicación descentralizada (DApp) completa usando **SvelteKit** y **ethers.js**. Aprenderás a:
 
 1. Crear una página de introducción profesional para tu DApp
