@@ -181,7 +181,7 @@
 {#if panelVisible}
   <div
     class="sb-panel"
-    style="left: {navExpanded ? '270px' : '48px'}"
+    style="--nav-offset: {navExpanded ? '270px' : '48px'}"
     in:fly={{ x: -12, duration: 220 }}
     out:fly={{ x: -12, duration: 160 }}
     role="complementary"
@@ -427,7 +427,7 @@
     position: fixed;
     top: 53px;
     bottom: 0;
-    left: 270px;
+    left: var(--nav-offset);
     right: 0;
     background: rgb(10,14,26);
     display: flex;
@@ -483,9 +483,10 @@
   @media (max-width: 768px) {
     .nav-wrap { display: none; }
     .sb-panel {
-      left: 0;
+      left: 0 !important;
+      right: 0 !important;
       top: 53px;
-      z-index: 90;
+      z-index: 150;
     }
     .sbp-section-title {
       padding: 0.75rem 1rem;
