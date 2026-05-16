@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Rajdhani:wght@400;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── Paleta One Piece / Luffy ── */
+  --p-black:   #0a0e1a;
+  --p-dark:    #0f1520;
+  --p-deep:    #0f2744;
+  --p-red:     #dc2626;
+  --p-red2:    #b91c1c;
+  --p-blue:    #1e3a5f;
+  --p-blue2:   #3b82f6;
+  --p-sky:     #60a5fa;
+  --p-gold:    #f59e0b;
+  --p-gold2:   #fbbf24;
+  --p-sand:    #d4a96a;
+  --p-white:   #f8fafc;
+  --p-silver:  #e2e8f0;
+  --p-card-bg: rgba(10,14,26,0.94);
+  --p-border:  rgba(220,38,38,0.3);
+  --p-glow:    0 0 40px rgba(220,38,38,0.18), 0 0 80px rgba(30,58,95,0.15);
+  --p-glow-sm: 0 0 16px rgba(220,38,38,0.25);
+
+  /* Alias semánticos */
+  --c-red-faint:   rgba(220,38,38,0.04);
+  --c-red-subtle:  rgba(220,38,38,0.08);
+  --c-red-soft:    rgba(220,38,38,0.14);
+  --c-red-mid:     rgba(220,38,38,0.28);
+  --c-red-strong:  rgba(220,38,38,0.55);
+  --c-blue-faint:  rgba(30,58,95,0.06);
+  --c-blue-soft:   rgba(30,58,95,0.12);
+  --c-base:        rgba(10,14,26,0.65);
+
+  /* Compatibilidad con variables antiguas usadas en componentes ui/ */
+  --n-black:   #0a0e1a;
+  --n-dark:    #0f1520;
+  --n-purple:  #1e3a5f;
+  --n-violet:  #3b82f6;
+  --n-gold:    #f59e0b;
+  --n-gold2:   #fbbf24;
+  --n-amber:   #d97706;
+  --n-red:     #dc2626;
+  --n-white:   #f8fafc;
+  --n-silver:  #e2e8f0;
+  --n-card-bg: rgba(10,14,26,0.94);
+  --n-border:  rgba(220,38,38,0.3);
+  --n-glow:    0 0 40px rgba(220,38,38,0.18), 0 0 80px rgba(30,58,95,0.15);
+  --i-black:   #0a0e1a;
+  --i-dark:    #0f1520;
+  --i-deep:    #0f2744;
+  --i-red:     #dc2626;
+  --i-red2:    #b91c1c;
+  --i-crimson: #dc2626;
+  --i-blood:   #b91c1b;
+  --i-ash:     #e2e8f0;
+  --i-mist:    #94a3b8;
+  --i-white:   #f8fafc;
+  --i-silver:  #e2e8f0;
+  --i-cloud:   #f1f5f9;
+  --i-card-bg: rgba(10,14,26,0.94);
+  --i-border:  rgba(220,38,38,0.3);
+  --i-glow:    0 0 40px rgba(220,38,38,0.18), 0 0 80px rgba(30,58,95,0.15);
+  --i-glow-sm: 0 0 16px rgba(220,38,38,0.25);
+}
+
+html { height: 100%; }
+
+body {
+  min-height: 100%;
+  font-family: 'Rajdhani', system-ui, sans-serif;
+  background: var(--p-black);
+  color: var(--p-white);
+  overflow: hidden;
+}
+
+/* Scrollbar — degradado rojo/dorado */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(10,14,26,0.8); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(220,38,38,0.5), rgba(245,158,11,0.4));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(220,38,38,0.8), rgba(245,158,11,0.7));
+}
+
+/* Fondo base — océano oscuro con destellos dorados */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 20% 30%, rgba(30,58,95,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 80% 70%, rgba(15,39,68,0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(220,38,38,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 30% at 70% 20%, rgba(245,158,11,0.05) 0%, transparent 50%),
+    linear-gradient(170deg, #0a0e1a 0%, #0f1520 50%, #0a0e1a 100%);
+  z-index: -2; pointer-events: none;
+}
+
+/* Patrón de tablones de madera de barco */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg,  transparent, transparent 59px, rgba(30,58,95,0.04) 60px),
+    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(245,158,11,0.02) 60px),
+    repeating-linear-gradient(15deg, transparent, transparent 119px, rgba(30,58,95,0.025) 120px);
+  z-index: -1; pointer-events: none;
+}
+
+.mono { font-family: 'Courier New', monospace; }
