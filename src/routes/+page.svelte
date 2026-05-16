@@ -403,4 +403,45 @@
     color: rgba(212,169,106,0.25);
     letter-spacing: 0.08em; margin-top: 1.25rem; text-transform: uppercase;
   }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .card-luffy {
+      padding: 1.5rem 1.25rem;
+      margin: 0.5rem;
+    }
+
+    .card-header {
+      flex-direction: column;
+      text-align: center;
+      gap: 1rem;
+    }
+
+    .title-block {
+      text-align: center;
+    }
+
+    .title-main {
+      font-size: 1.5rem;
+    }
+
+    .abilities-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .btn-connect {
+      padding: 0.8rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .title-eyebrow {
+      font-size: 0.5rem;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .abilities-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

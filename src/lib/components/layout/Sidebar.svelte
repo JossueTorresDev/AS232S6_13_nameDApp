@@ -482,7 +482,14 @@
   /* ── Responsive ── */
   @media (max-width: 768px) {
     .nav-wrap { display: none; }
-    .sb-panel { display: none; }
+    .sb-panel {
+      left: 0;
+      top: 53px;
+      z-index: 90;
+    }
+    .sbp-section-title {
+      padding: 0.75rem 1rem;
+    }
   }
 
   /* ══════════════════════════════════════════

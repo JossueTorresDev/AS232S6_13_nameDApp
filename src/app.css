@@ -71,7 +71,7 @@ body {
   font-family: 'Rajdhani', system-ui, sans-serif;
   background: var(--p-black);
   color: var(--p-white);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Scrollbar — degradado rojo/dorado */
