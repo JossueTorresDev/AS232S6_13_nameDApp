@@ -13,29 +13,13 @@
   let showNetworks = false;
   let selectedType: 'all' | 'utxo' | 'evm' = 'all';
 
-  // ── Custom networks (guardadas en localStorage) ───────────────────────────
-  const CUSTOM_KEY = 'paliwallet_custom_networks';
+  // ── Custom networks (en memoria) ──────────────────────────────────────────
+  let customNetworks: NetworkInfo[] = [];
 
-  function loadCustom(): NetworkInfo[] {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved: NetworkInfo[] = JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? '[]');
-      // Filtrar redes custom que ya existen en AVAILABLE_NETWORKS (evita duplicados de chainId)
-      return saved.filter(c => !AVAILABLE_NETWORKS.some(n => n.chainId === c.chainId));
-    } catch { return []; }
-  }
+  // ── Redes eliminadas (en memoria) ─────────────────────────────────────────
+  let deletedNetworks: number[] = [];
 
-  let customNetworks: NetworkInfo[] = loadCustom();
-
-  function saveCustom() {
-    if (typeof window !== 'undefined') {
-      // Solo guardar redes que no colisionen con las built-in
-      const toSave = customNetworks.filter(c => !AVAILABLE_NETWORKS.some(n => n.chainId === c.chainId));
-      localStorage.setItem(CUSTOM_KEY, JSON.stringify(toSave));
-    }
-  }
-
-  $: allNetworks = [...AVAILABLE_NETWORKS, ...customNetworks];
+  $: allNetworks = [...AVAILABLE_NETWORKS.filter(n => !deletedNetworks.includes(n.chainId)), ...customNetworks];
 
   $: filteredNetworks =
     selectedType === 'utxo' ? allNetworks.filter(n => n.type === 'UTXO') :
@@ -58,10 +42,13 @@
     }
   }
 
-  function removeCustomNetwork(chainId: number) {
-    customNetworks = customNetworks.filter(n => n.chainId !== chainId);
-    saveCustom();
-    toastStore.info('Red eliminada');
+  function removeNetwork(chainId: number, name: string) {
+    if (customNetworks.some(c => c.chainId === chainId)) {
+      customNetworks = customNetworks.filter(n => n.chainId !== chainId);
+    } else {
+      deletedNetworks = [...deletedNetworks, chainId];
+    }
+    toastStore.info(`Red "${name}" eliminada`);
   }
 
   // ── Add custom network modal ──────────────────────────────────────────────
@@ -110,10 +97,19 @@
     formError = validateForm() ?? '';
     if (formError) return;
 
+    const id = parseInt(form.chainId);
+
+    if (deletedNetworks.includes(id)) {
+      deletedNetworks = deletedNetworks.filter(x => x !== id);
+      toastStore.success(`Red restaurada exitosamente`);
+      closeAddModal();
+      return;
+    }
+
     const newNet: NetworkInfo = {
       name:          form.name.trim(),
       label:         'Custom',
-      chainId:       parseInt(form.chainId),
+      chainId:       id,
       rpcUrl:        form.rpcUrl.trim(),
       type:          form.type,
       currency:      form.currency.trim().toUpperCase(),
@@ -121,7 +117,6 @@
     };
 
     customNetworks = [...customNetworks, newNet];
-    saveCustom();
     toastStore.success(`Red "${newNet.name}" agregada`);
     closeAddModal();
   }
@@ -189,19 +184,17 @@
                 </svg>
               {/if}
             </button>
-            <!-- Remove custom network -->
-            {#if customNetworks.some(c => c.chainId === network.chainId)}
-              <button
-                class="remove-custom"
-                on:click|stopPropagation={() => removeCustomNetwork(network.chainId)}
-                aria-label="Eliminar red {network.name}"
-                title="Eliminar red"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            {/if}
+            <!-- Remove network button -->
+            <button
+              class="remove-custom"
+              on:click|stopPropagation={() => removeNetwork(network.chainId, network.name)}
+              aria-label="Eliminar red {network.name}"
+              title="Eliminar red"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
         {/each}
       </div>

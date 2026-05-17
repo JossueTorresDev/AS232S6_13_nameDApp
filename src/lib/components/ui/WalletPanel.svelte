@@ -8,7 +8,7 @@
   import WalletInfo       from './WalletInfo.svelte';
   import SkeletonCard     from './SkeletonCard.svelte';
 
-  $: balanceReady = $walletStore.balance !== '' && $walletStore.balance !== '0.0';
+  $: balanceReady = $walletStore.connected && $walletStore.balance !== '';
 
   let copied = false;
   async function copyAddress() {
