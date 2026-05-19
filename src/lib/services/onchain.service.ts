@@ -148,6 +148,10 @@ export async function fetchOnChainHistory(
 }
 
 // ── Incoming tx polling ───────────────────────────────────────────────────────
+// NOTA SENIOR: En entornos de producción de gran escala, se aconseja reemplazar este mecanismo 
+// de polling periódico (setInterval) por suscripciones activas vía WebSockets (wss://) o integrando 
+// webhooks de infraestructura de nodos (como Alchemy/QuickNode). Esto reduce a cero el desperdicio 
+// de ancho de banda y elimina el riesgo de bloqueos de IP por rebasar los límites de peticiones (Rate Limit).
 let lastKnownBlock = 0;
 let incomingPollInterval: ReturnType<typeof setInterval> | null = null;
 

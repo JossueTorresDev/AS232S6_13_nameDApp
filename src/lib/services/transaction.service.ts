@@ -103,6 +103,10 @@ export async function sendTransaction(
 }
 
 export async function switchNetwork(network: NetworkInfo): Promise<void> {
+  // NOTA SENIOR: Actualmente toda la conmutación de red está ruteada bajo la interfaz EVM (window.ethereum).
+  // Para soportar de forma nativa redes de tipo UTXO en producción con Pali Wallet, se debe implementar 
+  // una bifurcación lógica para invocar el objeto global `window.pali` (Pali UTXO Provider) y utilizar 
+  // sus métodos de comunicación específicos de cadena UTXO, evitando enviar RPCs de Ethereum a redes no-EVM.
   try {
     if (!window.ethereum) {
       throw new Error(WALLET_ERRORS.NOT_DETECTED);
