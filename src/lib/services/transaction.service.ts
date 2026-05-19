@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import type { Transaction, NetworkInfo } from '$lib/types/wallet';
+import { walletStore } from '$lib/stores/wallet.store';
 import { transactionStore } from '$lib/stores/transaction.store';
 import { activityStore }    from '$lib/stores/activity.store';
 import { WALLET_ERRORS } from '$lib/constants/network';
@@ -159,8 +160,6 @@ export async function updateBalance(network: NetworkInfo): Promise<void> {
     const rawBalance = await provider.getBalance(address);
     const balance = ethers.formatEther(rawBalance);
 
-    // Importar walletStore aquí para evitar circular dependency
-    const { walletStore } = await import('$lib/stores/wallet.store');
     walletStore.update(state => ({
       ...state,
       balance,

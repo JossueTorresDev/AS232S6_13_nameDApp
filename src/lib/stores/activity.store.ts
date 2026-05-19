@@ -25,10 +25,27 @@ const STORAGE_KEY = 'paliwallet_activity';
 function createActivityStore() {
   let saved: ActivityEntry[] = [];
 
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        saved = JSON.parse(raw);
+      } catch (e) {
+        console.error('Error loading activity:', e);
+      }
+    }
+  }
+
   const { subscribe, update } = writable<ActivityEntry[]>(saved);
 
   function persist(entries: ActivityEntry[]) {
-    // Ya no usamos localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      } catch (e) {
+        console.error('Error saving activity:', e);
+      }
+    }
   }
 
   function log(type: ActivityType, message: string, meta?: ActivityEntry['meta']) {

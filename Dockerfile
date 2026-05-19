@@ -1,33 +1,44 @@
-# Usa una imagen de Node.js ligera como base
+# ==========================================
+# Etapa 1: Builder (Compilación y Pruning)
+# ==========================================
 FROM node:20-alpine AS builder
 
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de configuración
+# Copia los archivos de configuración de dependencias
 COPY package*.json ./
 
-# Instala dependencias
+# Instala todas las dependencias (incluyendo devDependencies)
 RUN npm ci
 
-# Copia el resto del código
+# Copia el resto del código fuente del proyecto
 COPY . .
 
-# Construye la aplicación
+# Construye la aplicación compilando para producción
 RUN npm run build
 
-# Etapa final (producción)
-FROM node:20-alpine
+# Elimina las dependencias de desarrollo para aligerar la carpeta node_modules
+RUN npm prune --production
+
+# ==========================================
+# Etapa 2: Runner (Producción Ligera y Segura)
+# ==========================================
+FROM node:20-alpine AS runner
 
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Copia solo lo necesario para correr la app
+# Copiar solo los artefactos necesarios compilados y dependencias optimizadas
 COPY --from=builder /app/build ./build
-COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 
-# Expone el puerto (por defecto SvelteKit usa el 3000 con adapter-node)
+# Expone el puerto por defecto usado por SvelteKit adapter-node
 EXPOSE 3000
 
-# Comando para iniciar la aplicación
+# Ejecutar el contenedor bajo el usuario node de bajos privilegios para mayor seguridad
+USER node
+
+# Comando de inicio del servidor node
 CMD ["node", "build/index.js"]

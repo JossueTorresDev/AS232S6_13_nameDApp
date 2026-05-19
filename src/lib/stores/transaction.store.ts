@@ -10,11 +10,27 @@ interface TransactionState {
 const STORAGE_KEY = 'boar_hat_transactions';
 
 function loadTransactions(): Transaction[] {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error loading transactions:', e);
+      }
+    }
+  }
   return [];
 }
 
 function persistTransactions(txs: Transaction[]) {
-  // Historial remoto, ya no se guarda en localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(txs));
+    } catch (e) {
+      console.error('Error saving transactions:', e);
+    }
+  }
 }
 
 const initial: TransactionState = {

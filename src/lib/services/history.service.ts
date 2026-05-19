@@ -15,8 +15,13 @@ export async function fetchHistoryFromExplorer(address: string, network: Network
     if (network.blockExplorer.includes('etherscan.io') || network.blockExplorer.includes('polygonscan.com')) {
       // Etherscan based
       const domain = new URL(network.blockExplorer).hostname;
-      apiUrl = `https://api-${domain}/api`;
-      if (domain === 'etherscan.io') apiUrl = 'https://api.etherscan.io/api';
+      if (domain === 'etherscan.io') {
+        apiUrl = 'https://api.etherscan.io/api';
+      } else if (domain === 'polygonscan.com') {
+        apiUrl = 'https://api.polygonscan.com/api';
+      } else {
+        apiUrl = `https://api-${domain}/api`;
+      }
     } else {
       // Blockscout o similar (Rollux, zkSYS, etc) usualmente la api está en /api
       apiUrl = `${network.blockExplorer}/api`;
