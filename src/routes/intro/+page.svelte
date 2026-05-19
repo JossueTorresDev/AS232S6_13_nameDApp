@@ -5,8 +5,8 @@
   export const params = {};
 
   const socialLinks = [
-    { name: 'GitHub', url: 'https://github.com/vallegrande', icon: 'github', title: 'GitHub' },
-    { name: 'LinkedIn', url: 'https://linkedin.com/in/vallegrande', icon: 'linkedin', title: 'LinkedIn' },
+    { name: 'GitHub', url: 'https://github.com/JossueTorresDev', icon: 'github', title: 'GitHub' },
+    { name: 'LinkedIn', url: 'https://www.linkedin.com/in/jheferson-jossue-torres-humareda-b85662291/', icon: 'linkedin', title: 'LinkedIn' },
     { name: 'Twitter', url: 'https://twitter.com/vallegrande', icon: 'twitter', title: 'Twitter/X' },
     { name: 'Instagram', url: 'https://instagram.com/vallegrande', icon: 'instagram', title: 'Instagram' },
     { name: 'Discord', url: 'https://discord.com/users/vallegrande', icon: 'discord', title: 'Discord' },
