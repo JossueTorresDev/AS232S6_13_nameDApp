@@ -1,0 +1,20 @@
+{
+  "name": "PaliWallet — Siete Pecados Capitales",
+  "short_name": "PaliWallet",
+  "description": "Gestiona tus activos blockchain con el poder de Meliodas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06040a",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "utilities"],
+  "lang": "es"
+}

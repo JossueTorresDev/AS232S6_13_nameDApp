@@ -58,11 +58,13 @@
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer   = await provider.getSigner();
       const from     = await signer.getAddress();
+      
       const gasUnits = await provider.estimateGas({
         from,
         to:    recipientAddress,
         value: ethers.parseEther(amount),
       });
+
       const feeData  = await provider.getFeeData();
       const price    = feeData.gasPrice ?? 0n;
       const totalWei = gasUnits * price;
@@ -77,7 +79,7 @@
   // ── Validation ───────────────────────────────────────────────────────────────
   function validate(): string | null {
     if (!recipientAddress || !amount) return 'Por favor completa todos los campos';
-    if (!ethers.isAddress(recipientAddress)) return 'Dirección inválida';
+    if (!ethers.isAddress(recipientAddress)) return 'Dirección de destino inválida';
     if (parseFloat(amount) <= 0)             return 'La cantidad debe ser mayor a 0';
     if (isNaN(parseFloat(amount)))           return 'Cantidad inválida';
     if (cooldownLeft > 0)                    return `Espera ${(cooldownLeft / 1000).toFixed(1)}s antes de enviar de nuevo`;
@@ -639,5 +641,60 @@
   .btn-confirm:hover {
     transform: translateY(-1px);
     box-shadow: 0 10px 28px rgba(124,58,237,0.5);
+  }
+
+  /* ── Transaction Type Selector ── */
+  .tx-type-selector {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(6, 4, 10, 0.4);
+    padding: 0.25rem;
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+
+  .type-toggle-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: rgba(245, 158, 11, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .type-toggle-btn.active {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--n-gold2);
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+  }
+
+  .type-toggle-btn:hover:not(.active) {
+    color: rgba(245, 158, 11, 0.8);
+    background: rgba(245, 158, 11, 0.04);
+  }
+
+  .token-detected-badge {
+    font-size: 0.72rem;
+    color: #22c55e;
+    margin: 0.2rem 0 0;
+  }
+
+  .input-spinner-small {
+    position: absolute;
+    right: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(245, 158, 11, 0.1);
+    border-top-color: var(--n-gold2);
+    border-radius: 50%;
+    animation: spinAnim 0.6s linear infinite;
   }
 </style>

@@ -33,6 +33,11 @@ export async function connectWallet(): Promise<void> {
     activityStore.log('connect', `Wallet conectada: ${address}`, { address });
     toastStore.success('Wallet conectada correctamente');
 
+    // Si el usuario se conectó explícitamente, limpiar la marca de "desconectado"
+    if (typeof window !== 'undefined') {
+      try { sessionStorage.removeItem('user_disconnected'); } catch (e) { /* ignore */ }
+    }
+
     const state = Object.fromEntries(Object.entries(walletStore).filter(([k]) => k !== 'subscribe'));
     let currentNetwork: import('$lib/types/network').NetworkInfo | undefined;
     walletStore.subscribe(s => { currentNetwork = s.currentNetwork; })();
@@ -45,12 +50,26 @@ export async function connectWallet(): Promise<void> {
 }
 
 // ── Disconnect ───────────────────────────────────────────────────────────────
-export function disconnectWallet(): void {
+export async function disconnectWallet(): Promise<void> {
+  try {
+    if (window.ethereum) {
+      await window.ethereum.request({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }]
+      });
+    }
+  } catch (err) {
+    console.error('Error revoking permissions:', err);
+  }
   removeListeners();
   stopIncomingTxPolling();
   activityStore.log('disconnect', 'Wallet desconectada');
   walletStore.resetWallet();
 
+  // Marcar en sessionStorage que el usuario se desconectó manualmente
+  if (typeof window !== 'undefined') {
+    try { sessionStorage.setItem('user_disconnected', '1'); } catch (e) { /* ignore */ }
+  }
   if (typeof window !== 'undefined') {
     window.location.href = '/';
   }
@@ -59,6 +78,15 @@ export function disconnectWallet(): void {
 // ── Auto-reconnect (llamar en onMount del layout) ────────────────────────────
 export async function tryAutoReconnect(): Promise<void> {
   if (!window.ethereum) return;
+
+  // Si el usuario se desconectó manualmente en esta sesión, no intentar reconexión automática
+  try {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('user_disconnected')) {
+      return;
+    }
+  } catch (e) {
+    // ignore
+  }
 
   try {
     // eth_accounts no pide permiso — solo devuelve cuentas ya autorizadas

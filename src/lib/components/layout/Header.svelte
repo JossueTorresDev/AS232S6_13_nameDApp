@@ -3,10 +3,12 @@
   import { toastStore }  from '$lib/stores/toast.store';
   import { shortAddress } from '$lib/utils/format';
   import { sidebarStore } from '$lib/stores/sidebar.store';
+  import { disconnectWallet } from '$lib/services/wallet.service';
   import { fade, fly } from 'svelte/transition';
 
   let copied = false;
   let menuOpen = false;
+  let walletDropdownOpen = false;
 
   async function copyAddress() {
     if (!$walletStore.address) return;
@@ -14,6 +16,16 @@
     copied = true;
     toastStore.success('Dirección copiada');
     setTimeout(() => (copied = false), 2000);
+    walletDropdownOpen = false;
+  }
+
+  function toggleWalletDropdown() {
+    walletDropdownOpen = !walletDropdownOpen;
+  }
+
+  function handleDisconnect() {
+    walletDropdownOpen = false;
+    disconnectWallet();
   }
 
   function toggleMenu() {
@@ -24,7 +36,16 @@
     sidebarStore.set(s);
     menuOpen = false;
   }
+
+  function handleWindowClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (walletDropdownOpen && !target.closest('.wallet-menu-container')) {
+      walletDropdownOpen = false;
+    }
+  }
 </script>
+
+<svelte:window on:click={handleWindowClick} />
 
 <header class="header">
 
@@ -74,18 +95,45 @@
     <span class="hc-line"></span>
   </div>
 
-  <!-- Dirección (Abreviada más en mobile) -->
+  <!-- Dirección (Con Dropdown) -->
   {#if $walletStore.connected}
-    <button class="address-pill" on:click={copyAddress}>
-      {#if copied}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3">
-          <polyline points="20 6 9 17 4 12"/>
+    <div class="wallet-menu-container">
+      <button class="address-pill" on:click|stopPropagation={toggleWalletDropdown} aria-label="Menú de wallet">
+        <span class="ap-dot" class:copied></span>
+        <span class="mono">{shortAddress($walletStore.address)}</span>
+        <svg class="chevron-icon" class:rotated={walletDropdownOpen} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="6 9 12 15 18 9"/>
         </svg>
-      {:else}
-        <span class="ap-dot"></span>
+      </button>
+
+      {#if walletDropdownOpen}
+        <div class="wallet-dropdown" in:fly={{ y: 8, duration: 150 }} out:fade={{ duration: 100 }}>
+          <button class="dropdown-item" on:click={copyAddress}>
+            {#if copied}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span class="text-success">¡Copiado!</span>
+            {:else}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Copiar Dirección</span>
+            {/if}
+          </button>
+          
+          <button class="dropdown-item danger" on:click={handleDisconnect}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Desconectar Wallet</span>
+          </button>
+        </div>
       {/if}
-      <span class="mono">{shortAddress($walletStore.address)}</span>
-    </button>
+    </div>
   {/if}
 
 </header>
@@ -195,6 +243,80 @@
   }
 
   .nav-item:hover { background: rgba(220,38,38,0.15); border-color: var(--p-red); }
+
+  /* ── Wallet Dropdown ── */
+  .wallet-menu-container {
+    position: relative;
+    display: inline-block;
+  }
+
+  .chevron-icon {
+    transition: transform 0.2s ease;
+    opacity: 0.6;
+    margin-left: 0.2rem;
+  }
+
+  .chevron-icon.rotated {
+    transform: rotate(180deg);
+  }
+
+  .ap-dot.copied {
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+  }
+
+  .wallet-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: rgba(10, 14, 26, 0.95);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 6px;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 170px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.08);
+    backdrop-filter: blur(8px);
+    z-index: 150;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: rgba(226, 232, 240, 0.85);
+    font-size: 0.72rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--p-gold);
+  }
+
+  .dropdown-item.danger {
+    color: rgba(239, 68, 68, 0.85);
+  }
+
+  .dropdown-item.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
+  .text-success {
+    color: #22c55e;
+  }
 
   @media (max-width: 768px) {
     .menu-toggle { display: block; }

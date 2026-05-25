@@ -102,6 +102,109 @@ export async function sendTransaction(
   }
 }
 
+export async function sendERC20Transaction(
+  tokenAddress: string,
+  to: string,
+  amount: string,
+  network: NetworkInfo
+): Promise<string> {
+  try {
+    if (!window.ethereum) {
+      throw new Error(WALLET_ERRORS.NOT_DETECTED);
+    }
+
+    // Validar direcciones
+    if (!ethers.isAddress(to)) {
+      throw new Error(WALLET_ERRORS.INVALID_ADDRESS);
+    }
+    if (!ethers.isAddress(tokenAddress)) {
+      throw new Error('La dirección del contrato del token no es válida');
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const fromAddress = await signer.getAddress();
+
+    if (fromAddress.toLowerCase() === to.toLowerCase()) {
+      throw new Error('No puedes enviar fondos a tu propia dirección');
+    }
+
+    // ABI mínimo para interactuar con ERC-20
+    const erc20Abi = [
+      'function transfer(address to, uint256 value) public returns (bool)',
+      'function decimals() public view returns (uint8)',
+      'function symbol() public view returns (string)',
+      'function balanceOf(address owner) public view returns (uint256)'
+    ];
+
+    const contract = new ethers.Contract(tokenAddress, erc20Abi, signer);
+
+    // Obtener detalles del token con fallbacks
+    const tokenSymbol = await contract.symbol().catch(() => 'TOKEN');
+    const decimals = await contract.decimals().catch(() => 18);
+
+    // Validar saldo del token
+    const tokenBalance = await contract.balanceOf(fromAddress).catch(() => BigInt(0));
+    const amountWei = ethers.parseUnits(amount, Number(decimals));
+
+    if (tokenBalance < amountWei) {
+      throw new Error('Saldo insuficiente de tokens en el contrato');
+    }
+
+    // Enviar transacción
+    const tx = await contract.transfer(to, amountWei);
+
+    // Guardar transacción en el store
+    const transaction: Transaction = {
+      id: `${Date.now()}`,
+      hash: tx.hash,
+      from: fromAddress,
+      to,
+      amount,
+      timestamp: Date.now(),
+      status: 'pending',
+      networkId: network.chainId,
+      isTokenTx: true,
+      tokenAddress,
+      tokenSymbol
+    };
+
+    transactionStore.addTransaction(transaction);
+    activityStore.log('tx_sent', `Tx de Token enviada: ${amount} ${tokenSymbol} → ${to}`, { hash: tx.hash, amount, to });
+
+    // Esperar confirmación
+    const receiptPromise = tx.wait();
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 90_000)
+    );
+
+    let receipt: Awaited<typeof receiptPromise> | null = null;
+    try {
+      receipt = await Promise.race([receiptPromise, timeoutPromise]) as Awaited<typeof receiptPromise>;
+    } catch (timeoutErr: unknown) {
+      if (timeoutErr instanceof Error && timeoutErr.message === 'TIMEOUT') {
+        return tx.hash;
+      }
+      throw timeoutErr;
+    }
+
+    if (receipt) {
+      transactionStore.updateTransaction(tx.hash, {
+        status: 'confirmed',
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString()
+      });
+      activityStore.log('tx_confirmed', `Tx de Token confirmada en bloque #${receipt.blockNumber}`, { hash: tx.hash, block: receipt.blockNumber });
+      await updateBalance(network);
+    }
+
+    return tx.hash;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : WALLET_ERRORS.TRANSACTION_FAILED;
+    throw new Error(message);
+  }
+}
+
 export async function switchNetwork(network: NetworkInfo): Promise<void> {
   // NOTA SENIOR: Actualmente toda la conmutación de red está ruteada bajo la interfaz EVM (window.ethereum).
   // Para soportar de forma nativa redes de tipo UTXO en producción con Pali Wallet, se debe implementar 

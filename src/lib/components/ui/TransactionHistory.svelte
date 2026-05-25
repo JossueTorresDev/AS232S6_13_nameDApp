@@ -475,7 +475,7 @@
     y = secTitle('Seccion 3  -  Flujo de Fondos (Core Data)', y) + 2;
 
     y = dataRow('From', tx.from, y);
-    y = dataRow('To', tx.to, y);
+    y = dataRow(tx.isTokenTx ? 'Contract / To' : 'To', tx.to, y);
 
     doc.setFillColor(...snow);
     doc.rect(ML, y, CW, 14, 'F');
@@ -629,10 +629,19 @@
         {#each paginated as tx (tx.hash)}
           <div class="history-item {statusColor(tx.status)}" role="listitem">
             <div class="history-info">
-              <p class="history-to">A: {shortAddress(tx.to)}</p>
+              <p class="history-to">
+                {#if tx.isTokenTx}
+                  Contrato: {shortAddress(tx.to)}
+                  <span class="history-token-badge">TOKEN</span>
+                {:else}
+                  A: {shortAddress(tx.to)}
+                {/if}
+              </p>
               <p class="history-hash mono">{shortAddress(tx.hash)}</p>
             </div>
-            <div class="history-amount">{tx.amount}</div>
+            <div class="history-amount">
+              {tx.amount} {tx.isTokenTx && tx.tokenSymbol ? tx.tokenSymbol : ($walletStore.currentNetwork?.currency || 'SYS')}
+            </div>
             <span class="history-status">{tx.status}</span>
             <button class="btn-eye" on:click={() => openTxDetail(tx)} aria-label="Ver detalles de transaccion {shortAddress(tx.hash)}" title="Ver detalles">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -712,10 +721,21 @@
           </div>
         </div>
         <div class="modal-row"><span class="mr-label">DE</span><span class="mr-value mono">{shortAddress(selectedTx.from)}</span></div>
-        <div class="modal-row"><span class="mr-label">PARA</span><span class="mr-value mono">{shortAddress(selectedTx.to)}</span></div>
+        <div class="modal-row">
+          <span class="mr-label">{selectedTx.isTokenTx ? 'CONTRATO' : 'PARA'}</span>
+          <span class="mr-value mono">{shortAddress(selectedTx.to)}</span>
+        </div>
+        {#if selectedTx.isTokenTx}
+          <div class="modal-row">
+            <span class="mr-label">TOKEN CONTRATO</span>
+            <span class="mr-value mono small">{shortAddress(selectedTx.tokenAddress || '')}</span>
+          </div>
+        {/if}
         <div class="modal-row highlight">
           <span class="mr-label">CANTIDAD</span>
-          <span class="mr-value amount">{selectedTx.amount} {$walletStore.currentNetwork?.currency || 'SYS'}</span>
+          <span class="mr-value amount">
+            {selectedTx.amount} {selectedTx.isTokenTx && selectedTx.tokenSymbol ? selectedTx.tokenSymbol : ($walletStore.currentNetwork?.currency || 'SYS')}
+          </span>
         </div>
         <div class="modal-row"><span class="mr-label">FECHA</span><span class="mr-value">{formatDate(selectedTx.timestamp)}</span></div>
         {#if selectedTx.blockNumber}
@@ -814,4 +834,16 @@
   .mr-copy:hover { background:rgba(245,158,11,0.15); border-color:rgba(245,158,11,0.4); }
   .modal-explorer-btn { display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; padding:0.8rem; background:rgba(107,33,168,0.12); border:1px solid rgba(147,51,234,0.3); border-radius:6px; color:rgba(196,181,253,0.8); font-size:0.8rem; font-weight:700; letter-spacing:0.06em; text-decoration:none; transition:all 0.25s; }
   .modal-explorer-btn:hover { background:rgba(107,33,168,0.25); border-color:rgba(147,51,234,0.6); color:#c4b5fd; box-shadow:0 0 20px rgba(147,51,234,0.2); transform:translateY(-1px); }
+
+  .history-token-badge {
+    font-size: 0.55rem;
+    background: rgba(147, 51, 234, 0.15);
+    border: 1px solid rgba(147, 51, 234, 0.3);
+    color: #c4b5fd;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    font-weight: 700;
+    vertical-align: middle;
+  }
 </style>

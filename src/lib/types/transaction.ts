@@ -9,6 +9,9 @@ export interface Transaction {
   blockNumber?: number;
   gasUsed?: string;
   networkId: number;
+  isTokenTx?: boolean;
+  tokenAddress?: string;
+  tokenSymbol?: string;
 }
 
 export interface TransactionRequest {
@@ -17,3 +20,4 @@ export interface TransactionRequest {
   gasLimit?: string;
   gasPrice?: string;
 }
+

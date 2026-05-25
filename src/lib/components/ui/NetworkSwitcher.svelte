@@ -53,6 +53,8 @@
 
   // ── Add custom network modal ──────────────────────────────────────────────
   let showAddModal = false;
+  // ── Add choice menu (automática vs nueva)
+  let showAddChoices = false;
 
   // Form fields
   let form = {
@@ -73,13 +75,43 @@
     form = { name: '', rpcUrl: '', chainId: '', currency: '', blockExplorer: '', type: 'EVM' };
   }
 
+  function openAddChoices() {
+    // cerrar dropdown y mostrar modal global
+    showNetworks = false;
+    showAddChoices = !showAddChoices;
+  }
+
+  function openAddModalAutomatic() {
+    // Si no hay redes eliminadas, avisar
+    if (deletedNetworks.length === 0) {
+      toastStore.info('No hay redes eliminadas para restaurar');
+      showAddChoices = false;
+      return;
+    }
+    showAddChoices = false;
+    showAddModal = true;
+    formError = '';
+  }
+
+  function openAddModalManual() {
+    showAddChoices = false;
+    openAddModal();
+  }
+
+  function closeAddChoices() {
+    showAddChoices = false;
+  }
+
   function closeAddModal() {
     showAddModal = false;
     formError    = '';
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && showAddModal) closeAddModal();
+    if (e.key === 'Escape') {
+      if (showAddModal) closeAddModal();
+      if (showAddChoices) showAddChoices = false;
+    }
   }
 
   function validateForm(): string | null {
@@ -120,6 +152,12 @@
     toastStore.success(`Red "${newNet.name}" agregada`);
     closeAddModal();
   }
+
+  function restoreNetwork(chainId: number, name: string) {
+    deletedNetworks = deletedNetworks.filter(x => x !== chainId);
+    toastStore.success(`Red "${name}" restaurada automáticamente`);
+    closeAddModal();
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -156,10 +194,13 @@
           </button>
         {/each}
         <button class="btn-add-network" on:click={openAddModal} aria-label="Agregar red personalizada" title="Agregar red">
+        <button class="btn-add-network" on:click={openAddChoices} aria-label="Agregar red personalizada" title="Agregar red">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
+
+        <!-- choices modal is rendered globally below so it is not confined to the dropdown -->
       </div>
 
       <!-- List -->
@@ -227,7 +268,7 @@
             <line x1="2" y1="12" x2="22" y2="12"/>
             <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
           </svg>
-          <h3 class="modal-title">Custom RPC</h3>
+          <h3 class="modal-title">Agregar Red</h3>
         </div>
         <button class="modal-close" on:click={closeAddModal} aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
@@ -237,6 +278,35 @@
       </div>
 
       <div class="modal-divider"></div>
+
+      <!-- Sección de Restaurar Redes Predeterminadas (Automático) -->
+      {#if deletedNetworks.length > 0}
+        <div class="restore-networks-section">
+          <h4 class="restore-title">Restaurar Red Predeterminada (Automático)</h4>
+          <div class="restore-list">
+            {#each AVAILABLE_NETWORKS.filter(n => deletedNetworks.includes(n.chainId)) as net}
+              <button 
+                type="button" 
+                class="btn-restore-item" 
+                on:click={() => restoreNetwork(net.chainId, net.name)}
+                title="Hacer clic para restaurar la red automáticamente"
+              >
+                <div class="restore-item-details">
+                  <span class="restore-item-name">{net.name}</span>
+                  <span class="restore-item-sub">{net.type} · Chain ID: {net.chainId}</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+              </button>
+            {/each}
+          </div>
+          <div class="restore-divider"></div>
+        </div>
+      {/if}
+
+      <h4 class="restore-title manual-title">Nueva Red Personalizada (Manual)</h4>
 
       <!-- Type toggle EVM / UTXO -->
       <div class="type-toggle">
@@ -348,6 +418,45 @@
   </div>
 {/if}
 
+<!-- Global choices modal (moved out of dropdown so it appears as a top-level modal) -->
+{#if showAddChoices}
+  <div class="modal-backdrop" on:click={closeAddChoices} role="dialog" aria-modal="true" aria-label="Agregar red - opciones">
+    <div
+      class="modal-box"
+      on:click|stopPropagation
+      in:scale={{ duration: 300, easing: elasticOut, start: 0.82 }}
+      out:scale={{ duration: 160, start: 0.92 }}
+    >
+
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--n-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+          </svg>
+          <h3 class="modal-title">Agregar Red</h3>
+        </div>
+        <button class="modal-close" on:click={closeAddChoices} aria-label="Cerrar opciones">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <div class="modal-form">
+        <p class="choices-desc">Selecciona cómo deseas agregar la red:</p>
+        <div style="display:flex;flex-direction:column;gap:0.6rem;">
+          <button class="btn-save" on:click={openAddModalAutomatic} aria-label="Agregar automática">Automática (restaurar predeterminada)</button>
+          <button class="btn-save" on:click={openAddModalManual} aria-label="Agregar manual">Agregar red nueva</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{/if}
+
 <style>
   /* ── Switcher ── */
   .network-switcher { position: relative; z-index: 10; }
@@ -363,6 +472,15 @@
   }
 
   .network-button:hover:not(:disabled) { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.35); }
+  /* Modal choices styles */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 60; }
+  .choices-box { background: var(--bg-primary, #070707); border-radius: 12px; padding: 1rem; width: 360px; max-width: calc(100% - 32px); box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.04); }
+  .choices-title { margin: 0 0 0.25rem 0; font-size: 1rem; color: var(--n-gold); }
+  .choices-desc { margin: 0 0 0.8rem 0; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+  .choices-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+  .choice-auto, .choice-manual { width: 100%; padding: 0.7rem; background: transparent; color: var(--n-white); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; cursor: pointer; text-align: left; }
+  .choice-auto:hover, .choice-manual:hover { background: rgba(255,255,255,0.02); }
+  .choices-close { margin-top: 0.6rem; background: transparent; border: none; color: rgba(255,255,255,0.6); cursor: pointer; }
   .network-button:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .network-status { display: flex; align-items: center; gap: 0.75rem; flex: 1; text-align: left; }
@@ -631,5 +749,90 @@
     border-color: rgba(245,158,11,0.6);
     box-shadow: 0 6px 28px rgba(245,158,11,0.2);
     transform: translateY(-1px);
+  }
+
+  /* ── Restore Networks Section ── */
+  .restore-networks-section {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    text-align: left;
+  }
+
+  .restore-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--n-gold2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .restore-title.manual-title {
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+    text-align: left;
+  }
+
+  .restore-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .restore-list::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .restore-list::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.2);
+    border-radius: 1.5px;
+  }
+
+  .btn-restore-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.8rem;
+    background: rgba(245, 158, 11, 0.04);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 6px;
+    color: rgba(226, 232, 240, 0.85);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: left;
+  }
+
+  .btn-restore-item:hover {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: var(--n-gold2);
+    color: var(--n-white);
+  }
+
+  .restore-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .restore-item-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .restore-item-sub {
+    font-size: 0.65rem;
+    color: rgba(245, 158, 11, 0.5);
+  }
+
+  .restore-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.15), transparent);
+    margin-top: 0.5rem;
   }
 </style>
