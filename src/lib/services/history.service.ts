@@ -1,6 +1,9 @@
 import { transactionStore } from '$lib/stores/transaction.store';
 import type { NetworkInfo, Transaction } from '$lib/types/wallet';
 import { ethers } from 'ethers';
+import { DEFAULT_CONTRACT, getDefaultContractAddress } from '$lib/constants/contract';
+
+const SEND_FROM_CONTRACT_SELECTOR = ethers.id('sendFromContract(address,uint256)').slice(0, 10);
 
 // Fallback de transacciones de prueba temáticas de One Piece
 function getMockTransactions(address: string, chainId: number): Transaction[] {
@@ -88,18 +91,26 @@ export async function fetchHistoryFromExplorer(address: string, network: Network
     let fetchedTxs: Transaction[] = [];
 
     if (data.status === '1' && Array.isArray(data.result)) {
-      fetchedTxs = data.result.map((tx: any) => ({
-        id: tx.hash,
-        hash: tx.hash,
-        from: tx.from,
-        to: tx.to,
-        amount: ethers.formatEther(tx.value || '0'),
-        timestamp: parseInt(tx.timeStamp) * 1000,
-        status: tx.isError === '0' ? 'confirmed' : 'failed',
-        blockNumber: parseInt(tx.blockNumber),
-        gasUsed: tx.gasUsed,
-        networkId: network.chainId
-      }));
+      fetchedTxs = data.result.map((tx: any) => {
+        const contractAddress = getDefaultContractAddress(network.chainId);
+        const viaContract = !!contractAddress && typeof tx.to === 'string' && tx.to.toLowerCase() === contractAddress.toLowerCase() && typeof tx.input === 'string' && tx.input.startsWith(SEND_FROM_CONTRACT_SELECTOR);
+
+        return {
+          id: tx.hash,
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          amount: ethers.formatEther(tx.value || '0'),
+          timestamp: parseInt(tx.timeStamp) * 1000,
+          status: tx.isError === '0' ? 'confirmed' : 'failed',
+          blockNumber: parseInt(tx.blockNumber),
+          gasUsed: tx.gasUsed,
+          networkId: network.chainId,
+          viaContract,
+          contractAddress: viaContract ? contractAddress : undefined,
+          contractMethod: viaContract ? DEFAULT_CONTRACT.method : undefined
+        } as Transaction;
+      });
     }
 
     // Inyectar transacciones de prueba (fallback/representación) para Sepolia y Hoodi si la lista está vacía o como relleno
@@ -112,11 +123,17 @@ export async function fetchHistoryFromExplorer(address: string, network: Network
 
     if (fetchedTxs.length > 0) {
       transactionStore.update(state => {
-        const existingIds = new Set(fetchedTxs.map((t: Transaction) => t.hash));
+        const byHash = new Map(state.transactions.map(tx => [tx.hash.toLowerCase(), tx] as const));
+        const mergedFetched = fetchedTxs.map(tx => {
+          const existing = byHash.get(tx.hash.toLowerCase());
+          return existing ? { ...tx, ...existing, hash: tx.hash, id: existing.id || tx.id } : tx;
+        });
+
+        const existingIds = new Set(mergedFetched.map((t: Transaction) => t.hash));
         const keptTxs = state.transactions.filter(t => !existingIds.has(t.hash));
         return {
           ...state,
-          transactions: [...keptTxs, ...fetchedTxs],
+          transactions: [...keptTxs, ...mergedFetched],
           loading: false
         };
       });

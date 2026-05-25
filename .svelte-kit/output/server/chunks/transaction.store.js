@@ -134,17 +134,14 @@ const initial$1 = {
 function createWalletStore() {
   const { subscribe, set, update } = writable(initial$1);
   if (typeof window !== "undefined") {
-    const savedNetwork = localStorage.getItem("selectedNetwork");
-    if (savedNetwork) {
-      try {
+    try {
+      const savedNetwork = sessionStorage.getItem("selectedNetwork");
+      if (savedNetwork) {
         const network = JSON.parse(savedNetwork);
-        set({
-          ...initial$1,
-          currentNetwork: network
-        });
-      } catch (e) {
-        console.error("Error loading saved network:", e);
+        set({ ...initial$1, currentNetwork: network });
       }
+    } catch (e) {
+      console.error("Error loading saved network from sessionStorage:", e);
     }
   }
   return {
@@ -153,12 +150,12 @@ function createWalletStore() {
     set,
     setNetwork: (network) => {
       if (typeof window !== "undefined") {
-        localStorage.setItem("selectedNetwork", JSON.stringify(network));
+        try {
+          sessionStorage.setItem("selectedNetwork", JSON.stringify(network));
+        } catch (e) {
+        }
       }
-      update((state) => ({
-        ...state,
-        currentNetwork: network
-      }));
+      update((state) => ({ ...state, currentNetwork: network }));
     },
     resetWallet: () => set(initial$1)
   };

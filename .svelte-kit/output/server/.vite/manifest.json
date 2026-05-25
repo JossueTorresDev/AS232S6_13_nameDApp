@@ -25,6 +25,14 @@
       "_ssr.js"
     ]
   },
+  "_history.service.js": {
+    "file": "chunks/history.service.js",
+    "name": "history.service",
+    "imports": [
+      "_index.js",
+      "_transaction.store.js"
+    ]
+  },
   "_index.js": {
     "file": "chunks/index.js",
     "name": "index",
@@ -62,13 +70,6 @@
     "imports": [
       "_ssr2.js",
       "_exports.js"
-    ]
-  },
-  "_toast.store.js": {
-    "file": "chunks/toast.store.js",
-    "name": "toast.store",
-    "imports": [
-      "_index.js"
     ]
   },
   "_transaction.store.js": {
@@ -126,7 +127,7 @@
     "imports": [
       "_ssr.js",
       "_transaction.store.js",
-      "_toast.store.js",
+      "_history.service.js",
       "_exports.js",
       "_utils.js",
       "_state.svelte.js",
@@ -134,7 +135,7 @@
       "_favorites.store.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.cK8E3hgk.css"
+      "_app/immutable/assets/_layout.BcGiPL7_.css"
     ]
   },
   "src/routes/(app)/dashboard/+page.svelte": {
@@ -171,7 +172,7 @@
     "imports": [
       "_ssr.js",
       "_transaction.store.js",
-      "_toast.store.js",
+      "_history.service.js",
       "_exports.js",
       "_utils.js",
       "_state.svelte.js"

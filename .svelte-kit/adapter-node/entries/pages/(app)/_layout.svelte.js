@@ -1,6 +1,6 @@
 import { c as create_ssr_component, a as each, e as escape, b as subscribe, o as onDestroy, v as validate_component } from "../../../chunks/ssr.js";
 import { w as walletStore } from "../../../chunks/transaction.store.js";
-import "../../../chunks/toast.store.js";
+import "../../../chunks/history.service.js";
 import "@sveltejs/kit/internal";
 import "../../../chunks/exports.js";
 import "../../../chunks/utils.js";

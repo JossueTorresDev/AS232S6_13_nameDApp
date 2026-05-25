@@ -630,7 +630,10 @@
           <div class="history-item {statusColor(tx.status)}" role="listitem">
             <div class="history-info">
               <p class="history-to">
-                {#if tx.isTokenTx}
+                {#if tx.viaContract}
+                  Vía contrato: {shortAddress(tx.contractAddress || tx.to)}
+                  <span class="history-contract-badge">CONTRATO</span>
+                {:else if tx.isTokenTx}
                   Contrato: {shortAddress(tx.to)}
                   <span class="history-token-badge">TOKEN</span>
                 {:else}
@@ -722,9 +725,15 @@
         </div>
         <div class="modal-row"><span class="mr-label">DE</span><span class="mr-value mono">{shortAddress(selectedTx.from)}</span></div>
         <div class="modal-row">
-          <span class="mr-label">{selectedTx.isTokenTx ? 'CONTRATO' : 'PARA'}</span>
-          <span class="mr-value mono">{shortAddress(selectedTx.to)}</span>
+          <span class="mr-label">{selectedTx.viaContract ? 'CONTRATO' : selectedTx.isTokenTx ? 'CONTRATO' : 'PARA'}</span>
+          <span class="mr-value mono">{shortAddress(selectedTx.viaContract ? (selectedTx.contractAddress || '') : selectedTx.to)}</span>
         </div>
+        {#if selectedTx.viaContract}
+          <div class="modal-row">
+            <span class="mr-label">DESTINO FINAL</span>
+            <span class="mr-value mono">{shortAddress(selectedTx.to)}</span>
+          </div>
+        {/if}
         {#if selectedTx.isTokenTx}
           <div class="modal-row">
             <span class="mr-label">TOKEN CONTRATO</span>
@@ -840,6 +849,18 @@
     background: rgba(147, 51, 234, 0.15);
     border: 1px solid rgba(147, 51, 234, 0.3);
     color: #c4b5fd;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+
+  .history-contract-badge {
+    font-size: 0.55rem;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #86efac;
     padding: 0.1rem 0.35rem;
     border-radius: 3px;
     margin-left: 0.4rem;

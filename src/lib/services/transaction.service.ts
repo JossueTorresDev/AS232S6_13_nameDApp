@@ -4,6 +4,7 @@ import { walletStore } from '$lib/stores/wallet.store';
 import { transactionStore } from '$lib/stores/transaction.store';
 import { activityStore }    from '$lib/stores/activity.store';
 import { WALLET_ERRORS } from '$lib/constants/network';
+import { DEFAULT_CONTRACT, getDefaultContractAddress } from '$lib/constants/contract';
 
 declare global {
   interface Window {
@@ -38,19 +39,10 @@ export async function sendTransaction(
       throw new Error('No puedes enviar fondos a tu propia dirección');
     }
 
-    // Obtener balance
-    const balance = await provider.getBalance(fromAddress);
     const amountWei = ethers.parseEther(amount);
 
-    if (balance < amountWei) {
-      throw new Error(WALLET_ERRORS.INSUFFICIENT_BALANCE);
-    }
-
-    // Crear transacción
-    const tx = await signer.sendTransaction({
-      to,
-      value: amountWei
-    });
+    // Si existe un contrato predeterminado, usarlo siempre para reenviar fondos desde su propio balance.
+    const tx = await sendViaDefaultContract(provider, signer, fromAddress, to, amountWei, network);
 
     // Guardar transacción en el store
     const transaction: Transaction = {
@@ -100,6 +92,51 @@ export async function sendTransaction(
     const message = err instanceof Error ? err.message : WALLET_ERRORS.TRANSACTION_FAILED;
     throw new Error(message);
   }
+}
+
+async function sendViaDefaultContract(
+  provider: ethers.BrowserProvider,
+  signer: ethers.Signer,
+  fromAddress: string,
+  to: string,
+  amountWei: bigint,
+  network: NetworkInfo
+): Promise<ethers.ContractTransactionResponse> {
+  const contractAddress = getDefaultContractAddress(network.chainId);
+  if (!contractAddress || !DEFAULT_CONTRACT.abi.length) {
+    throw new Error(`Contrato predeterminado no configurado para chainId ${network.chainId}`);
+  }
+  if (!ethers.isAddress(contractAddress)) {
+    throw new Error('Contrato predeterminado no configurado con una dirección válida');
+  }
+
+  const contract = new ethers.Contract(contractAddress, DEFAULT_CONTRACT.abi, signer);
+
+  const contractBalance = await provider.getBalance(contractAddress);
+  if (contractBalance < amountWei) {
+    throw new Error('Saldo insuficiente en el contrato');
+  }
+
+  const tx = await contract.sendFromContract(to, amountWei);
+
+  const transaction: Transaction = {
+    id: `${Date.now()}`,
+    hash: tx.hash,
+    from: fromAddress,
+    to,
+    amount: ethers.formatEther(amountWei),
+    timestamp: Date.now(),
+    status: 'pending',
+    networkId: network.chainId,
+    viaContract: true,
+    contractAddress,
+    contractMethod: DEFAULT_CONTRACT.method
+  };
+
+  transactionStore.addTransaction(transaction);
+  activityStore.log('tx_sent', `Tx enviada vía contrato: ${ethers.formatEther(amountWei)} → ${to}`, { hash: tx.hash, amount: ethers.formatEther(amountWei), to, contract: contractAddress });
+
+  return tx;
 }
 
 export async function sendERC20Transaction(

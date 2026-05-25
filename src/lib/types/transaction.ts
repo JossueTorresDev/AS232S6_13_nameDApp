@@ -12,6 +12,9 @@ export interface Transaction {
   isTokenTx?: boolean;
   tokenAddress?: string;
   tokenSymbol?: string;
+  viaContract?: boolean;
+  contractAddress?: string;
+  contractMethod?: string;
 }
 
 export interface TransactionRequest {

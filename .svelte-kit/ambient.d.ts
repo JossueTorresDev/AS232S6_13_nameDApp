@@ -47,6 +47,7 @@ declare module '$env/static/private' {
 	export const CommonProgramW6432: string;
 	export const COMPUTERNAME: string;
 	export const ComSpec: string;
+	export const COPILOT_AGENT: string;
 	export const DriverData: string;
 	export const EDITOR: string;
 	export const EFC_7500_1262719628: string;
@@ -57,6 +58,9 @@ declare module '$env/static/private' {
 	export const FPS_BROWSER_APP_PROFILE_STRING: string;
 	export const FPS_BROWSER_USER_PROFILE_STRING: string;
 	export const GIT_ASKPASS: string;
+	export const GIT_EDITOR: string;
+	export const GIT_MERGE_AUTOEDIT: string;
+	export const GIT_PAGER: string;
 	export const HOME: string;
 	export const HOMEDRIVE: string;
 	export const HOMEPATH: string;
@@ -214,6 +218,7 @@ declare module '$env/dynamic/private' {
 		CommonProgramW6432: string;
 		COMPUTERNAME: string;
 		ComSpec: string;
+		COPILOT_AGENT: string;
 		DriverData: string;
 		EDITOR: string;
 		EFC_7500_1262719628: string;
@@ -224,6 +229,9 @@ declare module '$env/dynamic/private' {
 		FPS_BROWSER_APP_PROFILE_STRING: string;
 		FPS_BROWSER_USER_PROFILE_STRING: string;
 		GIT_ASKPASS: string;
+		GIT_EDITOR: string;
+		GIT_MERGE_AUTOEDIT: string;
+		GIT_PAGER: string;
 		HOME: string;
 		HOMEDRIVE: string;
 		HOMEPATH: string;
