@@ -111,13 +111,21 @@ async function sendViaDefaultContract(
   }
 
   const contract = new ethers.Contract(contractAddress, DEFAULT_CONTRACT.abi, signer);
+  const method = (DEFAULT_CONTRACT.method as string) ?? 'sendFromContract';
 
-  const contractBalance = await provider.getBalance(contractAddress);
-  if (contractBalance < amountWei) {
-    throw new Error('Saldo insuficiente en el contrato');
+  let tx: ethers.ContractTransactionResponse;
+  if (method === 'routeTransfer') {
+    // routeTransfer reenvía msg.value inmediatamente, no usa el balance del contrato
+    tx = await contract[method](to, { value: amountWei });
+  } else {
+    // Método antiguo: requería que el contrato tuviera suficiente balance
+    const contractBalance = await provider.getBalance(contractAddress);
+    if (contractBalance < amountWei) {
+      throw new Error('Saldo insuficiente en el contrato');
+    }
+
+    tx = await contract[method](to, amountWei);
   }
-
-  const tx = await contract.sendFromContract(to, amountWei);
 
   const transaction: Transaction = {
     id: `${Date.now()}`,
@@ -130,7 +138,7 @@ async function sendViaDefaultContract(
     networkId: network.chainId,
     viaContract: true,
     contractAddress,
-    contractMethod: DEFAULT_CONTRACT.method
+    contractMethod: method
   };
 
   transactionStore.addTransaction(transaction);

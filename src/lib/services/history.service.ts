@@ -3,7 +3,7 @@ import type { NetworkInfo, Transaction } from '$lib/types/wallet';
 import { ethers } from 'ethers';
 import { DEFAULT_CONTRACT, getDefaultContractAddress } from '$lib/constants/contract';
 
-const SEND_FROM_CONTRACT_SELECTOR = ethers.id('sendFromContract(address,uint256)').slice(0, 10);
+const SEND_FROM_CONTRACT_SELECTOR = ethers.id('routeTransfer(address)').slice(0, 10);
 
 // Fallback de transacciones de prueba temáticas de One Piece
 function getMockTransactions(address: string, chainId: number): Transaction[] {
@@ -78,10 +78,12 @@ export async function fetchHistoryFromExplorer(address: string, network: Network
       apiUrl = `${network.blockExplorer}/api`;
     }
 
-    const apiKey = 'CWNNYXD9JCQT74V93RBNMN72RB38PZGHVY';
+    // Preferir variable de entorno VITE_EXPLORER_API_KEY, si está presente.
+    const apiKey = (import.meta as any)?.env?.VITE_EXPLORER_API_KEY ?? 'tokensR834XZUX8GEFBHXVZUXX5J7K8533CNQ3BV**';
     let url = `${apiUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc`;
     
-    if (apiUrl.includes('etherscan.io')) {
+    // Etherscan/Polygonscan usan el parámetro `apikey`
+    if (apiUrl.includes('etherscan.io') || apiUrl.includes('polygonscan.com')) {
       url += `&apikey=${apiKey}`;
     }
 

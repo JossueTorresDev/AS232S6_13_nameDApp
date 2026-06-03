@@ -1,0 +1,252 @@
+version: "3.8"
+
+services:
+  keycloak:
+    image: nginx:alpine
+    container_name: keycloak-proxy
+    restart: always
+    command: >
+      /bin/sh -c "printf 'server { 
+        listen 8080; 
+        location / { 
+          proxy_pass http://keycloak-server:8080; 
+          proxy_set_header Host $$host; 
+          proxy_set_header X-Real-IP $$remote_addr; 
+        } 
+      }' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    networks:
+      - vg-network
+
+  redis-local:
+    image: redis:7-alpine
+    container_name: redis-local
+    command: redis-server --appendonly yes --maxmemory 200mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    # Redis es crítico, pero ligero en CPU
+    mem_limit: 250m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vg-network
+
+  tenant-service:
+    image: williams31/vg-ms-tenantmanagmentservice:latest
+    container_name: tenant-service
+    mem_limit: 500m
+    cpus: 1.0
+    environment: 
+      - SERVER_PORT=5001
+      - DB_USERNAME=tenant_user
+      - DB_PASSWORD=Tenant@2026
+      - DATABASE_URL=r2dbc:postgresql://tenant_user:Tenant%402026@173.212.213.28:5373/ms_tenant_service
+      - AUTH_SERVICE_URL=http://auth-service:5002
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_DATA_R2DBC=DEBUG
+      - LOGGING_LEVEL_IO_R2DBC_POSTGRESQL=DEBUG
+      - LOGGING_LEVEL_PE_EDU_VALLEGRANDE=DEBUG
+      - S3_ENDPOINT=https://s3.vallegrande.edu.pe
+      - S3_ACCESS_KEY=Zqobsop3fNQ6I2LmPS0r
+      - S3_SECRET_KEY=cuXOlFypS7u88rmW9bXvAem84fQP88Y6JwL09Qeu
+      - S3_BUCKET=prueba
+      - S3_REGION=us-east-1
+      - S3_PATH_STYLE=true
+    networks:
+      - vg-network
+   
+  auth-service:
+    image: henrylunazco/vg-ms-authentication-service:latest
+    container_name: auth-service
+    # Auth suele requerir más recursos por criptografía de tokens
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      ### ─── SERVIDOR ───────────────────────────────────────────────
+      - SERVER_PORT=5002
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_auth?sslMode=disable
+      - DB_USERNAME=user_auth
+      - DB_PASSWORD=Auth2026
+      - KEYCLOAK_URL=https://lab.vallegrande.edu.pe/keycloak
+      - KEYCLOAK_REALM=sipreb
+      - KEYCLOAK_CLIENT_ID=sipreb-backend
+      - KEYCLOAK_CLIENT_SECRET=6nx2O6hLT5iWimpk3DX4mm8gX51RcC2d
+      - KEYCLOAK_ADMIN_REALM=master
+      - KEYCLOAK_ADMIN_CLIENT_ID=admin-cli
+      - KEYCLOAK_ADMIN_SECRET=O0pvzsvJNQ7MFNSid5kCVkK1sGe8hBcd
+      - REDIS_URL=redis://redis-local:6379
+      - REDIS_SSL=false
+      - AUTH_REDIS_TTL=300s
+      - WT_SECRET=your-secret-key-here-min-256-bits-change-in-production
+      - JWT_EXPIRATION=3600000
+      - JWT_REFRESH_EXPIRATION=86400000
+      - CONFIGURATION_SERVICE_URL=http://configurationservice:5004
+      - ROLE_EXPIRATION_ENABLED=true
+      - ROLE_EXPIRATION_CRON=0 0 0 * * *
+      - USER_REACTIVATION_ENABLED=true
+      - USER_REACTIVATION_CRON=0 0 * * * *
+      - USER_UNBLOCK_ENABLED=true
+      - USER_UNBLOCK_CRON=0 */5 * * * *
+      - LOGGING_LEVEL_ROOT=INFO
+      - TIMEZONE=America/Lima
+    depends_on:
+      redis-local:
+        condition: service_healthy
+    networks:
+      - vg-network
+
+  configurationservice:
+    image: jossuetorres/vg-ms-configuration-service:latest
+    container_name: configurationservice
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5004
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_configuration_service?sslMode=disable
+      - DB_USERNAME=user_configuration
+      - DB_PASSWORD=Configuration2026
+      - SPRING_R2DBC_PROPERTIES_SSLMODE=disable
+      - SPRING_R2DBC_PROPERTIES_SSL_MODE=disable
+    depends_on:
+      - auth-service
+    networks:
+      - vg-network
+
+  patrimonio-service:
+    image: williams31/patrimonio-service:latest
+    container_name: patrimonio-service
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5003
+      - JAVA_OPTS=-Xmx180m -Xms128m
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_patrimonio?sslMode=disable
+      - DB_USERNAME=user_patrimonio
+      - DB_PASSWORD=Asset2026
+      - APP_NAME=patrimonio-service
+      - TRUST_GATEWAY_AUTH=true
+    depends_on:
+      - auth-service
+    networks:
+      - vg-network
+
+  movement-service:
+    image: jossuetorres/vg-ms-movementservice:latest
+    container_name: movement-service
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5005
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_movements?sslMode=disable
+      - DB_USERNAME=user_movements
+      - DB_PASSWORD=Movenements2026
+      - TZ=America/Lima
+      - USER_SERVICE_URL=http://auth-service:5002/api/v1
+      - PATRIMONIO_SERVICE_URL=http://patrimonio-service:5003/api/v1
+      - SPRING_R2DBC_PROPERTIES_SSLMODE=disable
+      - SPRING_R2DBC_PROPERTIES_SSL_MODE=disable
+    depends_on:
+      - auth-service
+      - patrimonio-service
+    networks:
+      - vg-network
+
+  inventory-service:
+    image: hilaryvivanco/vg-ms-inventarioservice:v2
+    container_name: inventory-service
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5006
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_inventario?sslMode=disable
+      - DATABASE_URL=r2dbc:postgresql://173.212.213.28:5373/ms_inventario?sslMode=disable
+      - DB_USERNAME=user_inventario
+      - DB_PASSWORD=Inventario2026
+      - SPRING_R2DBC_PROPERTIES_SSLMODE=disable
+      - SPRING_R2DBC_PROPERTIES_SSL_MODE=disable
+      - REDIS_URL=redis://redis-local:6379
+      - REDIS_SSL=false
+      - KEYCLOAK_URL=https://lab.vallegrande.edu.pe/keycloak/realms/sipreb
+      - ASSET_URL=http://patrimonio-service:5003
+      - CONFIG_URL=http://configurationservice:5004
+      - USER_URL=http://auth-service:5002
+    depends_on:
+      - redis-local
+      - auth-service
+    networks:
+      - vg-network
+
+  ms-maintenanceService:
+    image: luismencia/vg-ms-mantenimiento-service:9df798c4
+    container_name: ms-maintenanceService
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5007
+      - DB_URL=r2dbc:postgresql://173.212.213.28:5373/ms_mantenimiento?sslMode=disable
+      - DB_USERNAME=user_maintenances
+      - DB_PASSWORD=Admin2026
+      - KEYCLOAK_URL=https://lab.vallegrande.edu.pe/keycloak
+      - KEYCLOAK_REALM=sipreb
+      - PATRIMONIO_SERVICE_URL=http://patrimonio-service:5003
+      - TENANT_SERVICE_URL=http://tenant-service:5001
+      - AUTH_SERVICE_URL=http://auth-service:5002
+      - CONFIGURATION_SERVICE_URL=http://configurationservice:5004
+      - SERVICES_AUTH_URL=http://auth-service:5002
+      - SERVICES_PATRIMONIO_URL=http://patrimonio-service:5003
+      - SERVICES_TENANT_URL=http://tenant-service:5001
+      - SERVICES_CONFIGURATION_URL=http://configurationservice:5004
+      - SERVICES_AUTH_ENABLED=true
+      - SERVICES_PATRIMONIO_ENABLED=true
+      - SERVICES_TENANT_ENABLED=true
+      - SERVICES_CONFIGURATION_ENABLED=true
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - redis-local
+      - auth-service
+      - patrimonio-service
+      - tenant-service
+      - configurationservice
+    networks:
+      - vg-network
+
+  api-gateway:
+    image: williams31/vg-ms-gateway:vfinal
+    container_name: api-gateway
+    ports:
+      - "5000:5000"
+    mem_limit: 500m
+    cpus: 1.0
+    environment:
+      - SERVER_PORT=5000
+      - KEYCLOAK_URL=https://lab.vallegrande.edu.pe/keycloak
+      - KEYCLOAK_REALM=sipreb
+      - KEYCLOAK_CLIENT_ID=sipreb-backend
+      - KEYCLOAK_CLIENT_SECRET=6nx2O6hLT5iWimpk3DX4mm8gX51RcC2d
+      - REDIS_URL=redis://redis-local:6379
+      - REDIS_SSL=false
+      - AUTH_SERVICE_URL=http://auth-service:5002
+      - TENANT_SERVICE_URL=http://tenant-service:5001
+      - CONFIG_SERVICE_URL=http://configurationservice:5004
+      - PATRIMONIO_SERVICE_URL=http://patrimonio-service:5003
+      - MOVEMENT_SERVICE_URL=http://movement-service:5005
+      - INVENTORY_SERVICE_URL=http://inventory-service:5006
+      - MANTENIMIENTO_SERVICE_URL=http://ms-maintenanceService:5007
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,https://lab.vallegrande.edu.pe
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics
+      - MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always
+    depends_on:
+      auth-service:
+        condition: service_started
+    networks:
+      - vg-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  vg-network:
+    driver: bridge
