@@ -4,6 +4,9 @@
   import { goto }         from '$app/navigation';
   import { browser }      from '$app/environment';
   import ErrorBox         from '$lib/components/ui/ErrorBox.svelte';
+  import WatchOnly        from '$lib/components/ui/WatchOnly.svelte';
+
+  let watchOnlyRef: any;
 
   $: if (browser && $walletStore.connected) goto('/dashboard');
 </script>
@@ -47,6 +50,32 @@
         <p class="title-eyebrow">GRAND LINE · BLOCKCHAIN PIRATES</p>
         <h1 class="title-main">PALI<span class="title-accent">WALLET</span></h1>
         <p class="title-sub">Monkey D. Luffy · Rey de los Piratas</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-faucet" type="button" on:click={() => watchOnlyRef?.openFaucetModal()}>
+          ABRIR FAUCET
+        </button>
+        <button class="btn-connect" on:click={connectWallet} disabled={$walletStore.loading}>
+          {#if $walletStore.loading}
+            <span class="btn-bg"></span>
+            <svg class="spin" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+            <span>Zarpando al Grand Line...</span>
+          {:else}
+            <span class="btn-bg"></span>
+            <svg width="16" height="16" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="18" r="9" stroke="currentColor" stroke-width="3" fill="none"/>
+              <line x1="50" y1="27" x2="50" y2="76" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="28" y1="40" x2="72" y2="40" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M50 76 Q26 76 26 56" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M50 76 Q74 76 74 56" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M26 56 L18 63 L26 67" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M74 56 L82 63 L74 67" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>CONECTAR WALLET</span>
+          {/if}
+        </button>
       </div>
     </div>
 
@@ -127,29 +156,13 @@
     </div>
 
     <!-- Botón conectar -->
-    <button class="btn-connect" on:click={connectWallet} disabled={$walletStore.loading}>
-      {#if $walletStore.loading}
-        <span class="btn-bg"></span>
-        <svg class="spin" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <path d="M21 12a9 9 0 11-6.219-8.56"/>
-        </svg>
-        <span>Zarpando al Grand Line...</span>
-      {:else}
-        <span class="btn-bg"></span>
-        <svg width="16" height="16" viewBox="0 0 100 100" fill="none">
-          <circle cx="50" cy="18" r="9" stroke="currentColor" stroke-width="3" fill="none"/>
-          <line x1="50" y1="27" x2="50" y2="76" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
-          <line x1="28" y1="40" x2="72" y2="40" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-          <path d="M50 76 Q26 76 26 56" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M50 76 Q74 76 74 56" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M26 56 L18 63 L26 67" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M74 56 L82 63 L74 67" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>CONECTAR WALLET</span>
-      {/if}
-    </button>
+    <div class="auth-column">
+      <ErrorBox message={$walletStore.error} />
 
-    <ErrorBox message={$walletStore.error} />
+      <div class="watch-block">
+        <WatchOnly bind:this={watchOnlyRef} />
+      </div>
+    </div>
 
     <p class="card-footer">
       <svg width="9" height="9" viewBox="0 0 100 100" fill="none">
@@ -168,26 +181,84 @@
   .scene {
     position: relative; z-index: 2;
     min-height: 100vh;
+    box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
-    padding: 2rem 1rem;
+    padding: 1rem 0.75rem;
     perspective: 1200px;
+  }
+  :global(html), :global(body) {
+    overflow-y: hidden;
+    height: 100%;
   }
 
   .card-luffy {
     position: relative;
     background: var(--p-card-bg);
     border: 1px solid rgba(220,38,38,0.25);
-    border-radius: 6px;
-    padding: 2.5rem 2.75rem;
-    width: 100%; max-width: 520px;
-    backdrop-filter: blur(24px);
+    border-radius: 16px;
+    padding: 1.9rem 2rem;
+    width: 100%; max-width: 780px;
+    backdrop-filter: blur(20px);
     box-shadow:
       var(--p-glow),
-      0 40px 80px rgba(0,0,0,0.9),
+      0 30px 60px rgba(0,0,0,0.8),
       inset 0 1px 0 rgba(220,38,38,0.12),
       inset 0 -1px 0 rgba(30,58,95,0.1);
     transform: rotateX(1.5deg);
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .auth-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.95rem;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 0 0 rgba(255,255,255,0.02);
+  }
+
+  .auth-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .auth-title {
+    font-size: 0.98rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #f8fafc;
+    text-transform: uppercase;
+  }
+
+  .auth-desc {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: rgba(226,232,240,0.78);
+  }
+
+  .watch-block {
+    margin: 0.8rem -0.95rem 0;
+    padding: 0 0.95rem 0;
+    width: calc(100% + 1.9rem);
+    border-radius: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  @media (min-width: 900px) {
+    .auth-column {
+      padding: 1.8rem 1.6rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      background: rgba(6,8,20,0.82);
+      box-shadow: 0 20px 45px rgba(0,0,0,0.16);
+    }
   }
 
   .card-luffy:hover {
@@ -214,7 +285,16 @@
 
   .card-header {
     display: flex; align-items: center; gap: 1.5rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
     margin-bottom: 1.75rem;
+  }
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
   }
 
   .hat-emblem {
@@ -356,24 +436,45 @@
     100% { background-position: 200% 50%; }
   }
 
+  .btn-faucet,
   .btn-connect {
-    position: relative; width: 100%;
-    padding: 1rem 1.5rem; background: transparent;
-    border: 1px solid rgba(220,38,38,0.5); border-radius: 5px;
+    position: relative;
+    min-width: 160px;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(180deg, rgba(245,158,11,0.16), rgba(220,38,38,0.12));
+    border: 1px solid rgba(245,158,11,0.32);
+    border-radius: 16px;
     color: var(--p-white);
     font-family: 'Pirata One', cursive;
     font-size: 0.95rem; font-weight: 700; letter-spacing: 0.1em;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center; gap: 0.7rem;
     overflow: hidden; transition: all 0.3s; z-index: 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(220,38,38,0.12);
+  }
+
+  .btn-faucet {
+    min-width: 165px;
+    background: rgba(30,58,95,0.85);
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .btn-faucet:hover:not(:disabled) {
+    color: var(--p-gold);
+    border-color: var(--p-gold);
+    box-shadow:
+      0 0 20px rgba(255,255,255,0.15),
+      0 0 40px rgba(30,58,95,0.25),
+      inset 0 0 18px rgba(245,158,11,0.08);
+    transform: translateY(-1px);
   }
 
   .btn-bg {
     position: absolute; inset: 0;
     background: linear-gradient(135deg,
-      rgba(220,38,38,0.14) 0%,
-      rgba(30,58,95,0.1) 50%,
-      rgba(220,38,38,0.14) 100%);
+      rgba(245,158,11,0.14) 0%,
+      rgba(255,255,255,0.04) 48%,
+      rgba(245,158,11,0.14) 100%);
     background-size: 200% 200%;
     animation: btnFlow 3.5s ease infinite; z-index: -1;
   }

@@ -1,5 +1,5 @@
 import { w as writable } from "./index.js";
-import { d as get_store_value } from "./ssr.js";
+import { f as get_store_value } from "./ssr.js";
 const STORAGE_KEY$1 = "paliwallet_txlimits";
 const DEFAULT = {
   maxAmountEnabled: false,

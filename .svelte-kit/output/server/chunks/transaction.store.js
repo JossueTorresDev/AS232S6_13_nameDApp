@@ -277,6 +277,7 @@ function createTransactionStore() {
 }
 const transactionStore = createTransactionStore();
 export {
+  AVAILABLE_NETWORKS as A,
   activityStore as a,
   transactionStore as t,
   walletStore as w

@@ -1,14 +1,16 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { ethers }              from 'ethers';
   import { AVAILABLE_NETWORKS }  from '$lib/constants/network';
   import { shortAddress, formatBalance } from '$lib/utils/format';
   import { fetchOnChainHistory, fetchTokenBalances } from '$lib/services/onchain.service';
+  import { buildFaucetUrl, getFaucetInfoForNetwork, type FaucetInfo } from '$lib/services/faucet.service';
   import type { NetworkInfo }    from '$lib/types/network';
   import type { OnChainTx }      from '$lib/services/onchain.service';
   import type { TokenBalance }   from '$lib/services/onchain.service';
 
   let inputAddress  = '';
   let selectedNet   = AVAILABLE_NETWORKS.find(n => n.chainId === 1) ?? AVAILABLE_NETWORKS[0];
+  let selectedFaucetNet: NetworkInfo | undefined = AVAILABLE_NETWORKS.find(n => n.chainId === 11155111) ?? AVAILABLE_NETWORKS[0];
   let loading       = false;
   let error         = '';
   let nativeBalance = '';
@@ -16,13 +18,23 @@
   let tokens: TokenBalance[]  = [];
   let searched      = false;
   let netOpen       = false;
+  let faucetModalOpen = false;
+  let resultsModalOpen = false;
+  let faucetInfo: FaucetInfo | undefined;
+  let faucetNetworks: NetworkInfo[] = [];
 
   $: addressValid = ethers.isAddress(inputAddress);
   $: evmNets = AVAILABLE_NETWORKS.filter(n => n.type === 'EVM');
+  $: faucetNetworks = AVAILABLE_NETWORKS.filter(n => getFaucetInfoForNetwork(n));
+  $: faucetInfo = selectedFaucetNet ? getFaucetInfoForNetwork(selectedFaucetNet) : undefined;
 
   function selectNet(net: NetworkInfo) {
     selectedNet = net;
     netOpen = false;
+  }
+
+  function selectFaucetNetwork(net: NetworkInfo) {
+    selectedFaucetNet = net;
   }
 
   async function lookup() {
@@ -39,6 +51,7 @@
       txHistory     = history;
       tokens        = tkns;
       searched      = true;
+      resultsModalOpen = true;
     } catch {
       error = 'No se pudo consultar la dirección. Verifica la red.';
     } finally {
@@ -46,158 +59,128 @@
     }
   }
 
+  function requestFaucet() {
+    const targetNet = selectedFaucetNet ?? selectedNet;
+    const url = buildFaucetUrl(targetNet, addressValid ? inputAddress : undefined);
+    if (!url) return;
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      faucetModalOpen = false;
+    }
+  }
+
+  export function openFaucetModal() {
+    selectedFaucetNet = getFaucetInfoForNetwork(selectedNet) ? selectedNet : faucetNetworks[0];
+    faucetModalOpen = true;
+  }
+
+  function openResultsModal() {
+    resultsModalOpen = true;
+  }
+
+  function closeFaucetModal() {
+    faucetModalOpen = false;
+  }
+
+  function reloadPage() {
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  }
+
+  function closeResultsModal() {
+    resultsModalOpen = false;
+  }
+
   function reset() {
     inputAddress = ''; nativeBalance = '';
     txHistory = []; tokens = []; searched = false; error = '';
+    resultsModalOpen = false;
   }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
 {#if netOpen}
   <div class="net-backdrop" on:click={() => netOpen = false}></div>
 {/if}
 
-<div class="watch-only">
-
-  <!-- Header -->
-  <div class="wo-header">
-    <div class="wo-icon" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--n-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-    </div>
-    <div>
-      <h3 class="wo-title">Watch-Only</h3>
-      <p class="wo-sub">Consulta cualquier dirección sin conectar wallet</p>
-    </div>
-  </div>
-
-  <div class="wo-divider"></div>
-
-  <!-- Input dirección + selector de red en la misma fila -->
-  <div class="wo-row">
-
-    <!-- Input dirección -->
-    <div class="wo-field" style="flex:1; min-width:0;">
-      <label class="wo-field-label" for="wo-addr">DIRECCIÓN</label>
-      <div class="wo-input-wrap">
-        <svg class="wo-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,0.4)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
-        </svg>
-        <input
-          id="wo-addr"
-          class="wo-input"
-          class:valid={addressValid}
-          class:invalid={inputAddress.length > 5 && !addressValid}
-          type="text"
-          placeholder="0x... dirección a consultar"
-          bind:value={inputAddress}
-          disabled={loading}
-          spellcheck="false"
-          autocomplete="off"
-          aria-label="Dirección a consultar"
-        />
-        {#if addressValid}
-          <svg class="wo-valid-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        {/if}
+{#if faucetModalOpen}
+  <div class="wo-modal-backdrop" on:click={closeFaucetModal}></div>
+  <div class="wo-modal-card" role="dialog" aria-modal="true" aria-label="Faucet de red de prueba">
+    <div class="wo-modal-header">
+      <div>
+        <p class="wo-modal-title">Faucet de red de prueba</p>
+        <p class="wo-modal-sub">{faucetInfo ? `Abre la faucet para ${selectedNet.name}` : 'Selecciona una red compatible para abrir la faucet'}</p>
       </div>
+      <button class="wo-modal-close" type="button" on:click={closeFaucetModal} aria-label="Cerrar modal">×</button>
     </div>
+    {#if faucetInfo}
+      <div class="wo-modal-copy">
+        <div class="wo-modal-top-row">
+          <p class="wo-modal-heading">{faucetInfo.title ?? faucetInfo.label}</p>
+          <span class="wo-modal-badge">Beta</span>
+        </div>
+        <p class="wo-modal-description">{faucetInfo.description ?? `Get free ${selectedFaucetNet?.currency ?? selectedNet.currency} on ${selectedFaucetNet?.name ?? selectedNet.name}. Brought to you by Google Cloud for Web3.`}</p>
 
-    <!-- Selector de red -->
-    <div class="wo-field" style="width:200px; flex-shrink:0;">
-      <label class="wo-field-label">RED</label>
-      <div class="wo-net-selector" class:open={netOpen}>
-        <button
-          class="wo-net-btn"
-          on:click={() => netOpen = !netOpen}
-          disabled={loading}
-          aria-haspopup="listbox"
-          aria-expanded={netOpen}
-          aria-label="Seleccionar red"
-        >
-          <span class="wo-net-dot"></span>
-          <span class="wo-net-name">{selectedNet.name}</span>
-          <svg
-            width="13" height="13" viewBox="0 0 24 24" fill="none"
-            stroke="rgba(245,158,11,0.5)" stroke-width="2.5" stroke-linecap="round"
-            style="transition:transform 0.2s; transform:rotate({netOpen ? 180 : 0}deg); flex-shrink:0"
-            aria-hidden="true"
-          >
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-
-        {#if netOpen}
-          <div class="wo-net-dropdown" role="listbox" aria-label="Redes disponibles">
-            {#each evmNets as net (net.chainId)}
+        <div class="wo-modal-field">
+          <label class="wo-modal-field-label">Select network</label>
+          <div class="wo-faucet-net-list">
+            {#each faucetNetworks as net}
               <button
-                class="wo-net-option"
-                class:selected={net.chainId === selectedNet.chainId}
-                on:click={() => selectNet(net)}
-                role="option"
-                aria-selected={net.chainId === selectedNet.chainId}
+                type="button"
+                class="wo-faucet-net-btn"
+                class:active={selectedFaucetNet?.chainId === net.chainId}
+                on:click={() => selectFaucetNetwork(net)}
               >
-                <span class="wo-net-dot" class:active={net.chainId === selectedNet.chainId}></span>
-                <span class="wo-net-opt-name">{net.name}</span>
-                <span class="wo-net-opt-cur">{net.currency}</span>
-                {#if net.chainId === selectedNet.chainId}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                {/if}
+                {net.name}
               </button>
             {/each}
           </div>
+          <p class="wo-modal-required">*required</p>
+        </div>
+
+        <div class="wo-modal-field">
+          <label class="wo-modal-field-label">Wallet address or ENS name</label>
+          <input
+            class="wo-modal-input"
+            type="text"
+            bind:value={inputAddress}
+            placeholder="Enter the account address or ENS name where you want to receive tokens"
+            aria-label="Wallet address or ENS name"
+          />
+        </div>
+
+        {#if addressValid}
+          <p class="wo-modal-note">Al hacer clic se abrirá la faucet en una pestaña nueva para la red seleccionada.</p>
+        {:else}
+          <p class="wo-modal-note">Ingresa una dirección válida o ENS para continuar.</p>
         {/if}
       </div>
-    </div>
-
-  </div>
-
-  <!-- Acciones -->
-  <div class="wo-actions">
-    <button class="wo-btn-search" on:click={lookup} disabled={loading || !addressValid} aria-label="Consultar dirección">
-      {#if loading}
-        <svg class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-          <path d="M21 12a9 9 0 11-6.219-8.56"/>
-        </svg>
-        Consultando...
-      {:else}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        Consultar Dirección
-      {/if}
-    </button>
-    {#if searched}
-      <button class="wo-btn-reset" on:click={reset} aria-label="Limpiar consulta">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-        Limpiar
-      </button>
+    {:else}
+      <div class="wo-modal-copy">
+        <p>Esta red no tiene faucet configurada en la aplicación. Elige una red de prueba compatible como Ethereum Hoodi o Sepolia.</p>
+      </div>
     {/if}
-  </div>
-
-  {#if error}
-    <div class="wo-error" role="alert">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      {error}
+    <div class="wo-modal-actions">
+      <button class="wo-btn-faucet" on:click={requestFaucet} type="button" disabled={!faucetInfo}>
+        {faucetInfo ? `Abrir faucet de ${selectedFaucetNet?.name ?? selectedNet.name}` : 'Selecciona red compatible'}
+      </button>
+      <button class="wo-btn-secondary" on:click={reloadPage} type="button">Recargar página</button>
+      <button class="wo-btn-reset" on:click={closeFaucetModal} type="button">Cancelar</button>
     </div>
-  {/if}
+  </div>
+{/if}
 
-  <!-- Resultados -->
-  {#if searched}
-    <div class="wo-results">
-
-      <!-- Dirección + saldo -->
+{#if resultsModalOpen}
+  <div class="wo-modal-backdrop" on:click={closeResultsModal}></div>
+  <div class="wo-modal-card" role="dialog" aria-modal="true" aria-label="Resultados de dirección">
+    <div class="wo-modal-header">
+      <div>
+        <p class="wo-modal-title">Resultados de dirección</p>
+        <p class="wo-modal-sub">{selectedNet.name} · {shortAddress(inputAddress)}</p>
+      </div>
+      <button class="wo-modal-close" type="button" on:click={closeResultsModal} aria-label="Cerrar modal">×</button>
+    </div>
+    <div class="wo-modal-copy">
       <div class="wo-result-card">
         <div class="wrc-row">
           <div class="wrc-item">
@@ -215,7 +198,6 @@
         </div>
       </div>
 
-      <!-- Tokens -->
       {#if tokens.length > 0}
         <div class="wo-section">
           <p class="wo-section-title">
@@ -235,7 +217,6 @@
         </div>
       {/if}
 
-      <!-- Historial -->
       <div class="wo-section">
         <p class="wo-section-title">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,0.6)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -244,6 +225,7 @@
           Últimas transacciones
           {#if txHistory.length === 0}<span class="wo-empty-note">(sin datos del explorer)</span>{/if}
         </p>
+
         {#if txHistory.length > 0}
           <div class="wo-txlist">
             {#each txHistory as tx (tx.hash)}
@@ -261,7 +243,7 @@
                 </div>
                 <span class="wo-tx-amount">{parseFloat(tx.value).toFixed(5)} {selectedNet.currency}</span>
                 {#if selectedNet.blockExplorer}
-                  <a class="wo-tx-link" href="{selectedNet.blockExplorer}/tx/{tx.hash}" target="_blank" rel="noopener noreferrer" aria-label="Ver en explorer">
+                  <a class="wo-tx-link" href={selectedNet.blockExplorer + '/tx/' + tx.hash} target="_blank" rel="noopener noreferrer" aria-label="Ver en explorer">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                       <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
                       <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -273,10 +255,148 @@
           </div>
         {/if}
       </div>
-
     </div>
-  {/if}
+    <div class="wo-modal-actions">
+      <button class="wo-btn-reset" type="button" on:click={closeResultsModal}>Cerrar</button>
+    </div>
+  </div>
+{/if}
 
+<div class="watch-only">
+  <div class="wo-header">
+    <div class="wo-icon" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--n-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </div>
+    <div>
+      <h3 class="wo-title">Watch-Only</h3>
+      <p class="wo-sub">Consulta cualquier dirección sin conectar wallet. Solicita faucet en redes de prueba desde la dApp.</p>
+    </div>
+  </div>
+
+  <div class="wo-main">
+    <div class="wo-form">
+      <div class="wo-row">
+        <div class="wo-field">
+          <label class="wo-field-label" for="wo-addr">DIRECCIÓN</label>
+          <div class="wo-input-wrap">
+            <svg class="wo-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,0.4)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input
+              id="wo-addr"
+              class="wo-input"
+              class:valid={addressValid}
+              class:invalid={inputAddress.length > 5 && !addressValid}
+              type="text"
+              placeholder="0x... dirección a consultar"
+              bind:value={inputAddress}
+              disabled={loading}
+              spellcheck="false"
+              autocomplete="off"
+              aria-label="Dirección a consultar"
+            />
+            {#if addressValid}
+              <svg class="wo-valid-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
+          </div>
+        </div>
+
+        <div class="wo-field">
+          <label class="wo-field-label">RED</label>
+          <div class="wo-net-selector" class:open={netOpen}>
+            <button
+              class="wo-net-btn"
+              on:click={() => netOpen = !netOpen}
+              disabled={loading}
+              aria-haspopup="listbox"
+              aria-expanded={netOpen}
+              aria-label="Seleccionar red"
+            >
+              <span class="wo-net-dot"></span>
+              <span class="wo-net-name">{selectedNet.name}</span>
+              <svg
+                width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="rgba(245,158,11,0.5)" stroke-width="2.5" stroke-linecap="round"
+                style="transition:transform 0.2s; transform:rotate({netOpen ? 180 : 0}deg); flex-shrink:0"
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            {#if netOpen}
+              <div class="wo-net-dropdown" role="listbox" aria-label="Redes disponibles">
+                {#each evmNets as net (net.chainId)}
+                  <button
+                    class="wo-net-option"
+                    class:selected={net.chainId === selectedNet.chainId}
+                    on:click={() => selectNet(net)}
+                    role="option"
+                    aria-selected={net.chainId === selectedNet.chainId}
+                  >
+                    <span class="wo-net-dot" class:active={net.chainId === selectedNet.chainId}></span>
+                    <span class="wo-net-opt-name">{net.name}</span>
+                    <span class="wo-net-opt-cur">{net.currency}</span>
+                    {#if net.chainId === selectedNet.chainId}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <div class="wo-actions">
+        <button class="wo-btn-search" on:click={lookup} disabled={loading || !addressValid} aria-label="Consultar dirección">
+          {#if loading}
+            <svg class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+            Consultando...
+          {:else}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Consultar Dirección
+          {/if}
+        </button>
+
+        {#if searched}
+          <button class="wo-btn-reset" on:click={reset} aria-label="Limpiar consulta">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Limpiar
+          </button>
+        {/if}
+      </div>
+
+      {#if error}
+        <div class="wo-error" role="alert">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {error}
+        </div>
+      {/if}
+
+      {#if searched && !error}
+        <div class="wo-results-note">
+          Resultados listos. <button class="wo-link-button" type="button" on:click={openResultsModal}>Ver resultados</button>
+        </div>
+      {/if}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -285,348 +405,676 @@
   }
 
   .watch-only {
-    background: rgba(245,158,11,0.03);
-    border: 1px solid rgba(245,158,11,0.12);
-    border-radius: 10px;
-    padding: 1.5rem;
+    position: relative;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
+    box-shadow: none;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    overflow: visible;
   }
 
   /* ── Header ── */
   .wo-header {
-    display: flex; align-items: center; gap: 0.75rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
   }
-
   .wo-icon {
-    width: 36px; height: 36px;
-    background: rgba(245,158,11,0.08);
-    border: 1px solid rgba(245,158,11,0.18);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.22), rgba(245,158,11,0.08));
+    border: 1px solid rgba(245,158,11,0.22);
+    border-radius: 14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
   }
-
+  .wo-title {
+    font-size: 1.08rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #f8fafc;
+  }
   .wo-title {
     font-family: 'Cinzel', serif;
-    font-size: 1rem; font-weight: 700;
-    color: var(--n-white); margin: 0; letter-spacing: 0.04em;
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+    font-weight: 800;
+    color: var(--n-white);
   }
-
   .wo-sub {
-    font-size: 0.68rem; color: rgba(245,158,11,0.45);
-    margin: 0.15rem 0 0; letter-spacing: 0.02em;
+    font-size: 0.74rem;
+    color: rgba(245,158,11,0.55);
+    margin-top: 0.3rem;
+    line-height: 1.4;
   }
-
   .wo-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.18), transparent);
+    margin: 0.4rem 0 0;
   }
 
-  /* ── Fields ── */
+  .wo-main {
+    display: block;
+    width: 100%;
+  }
+  .wo-form,
+  .wo-side {
+    width: 100%;
+    border-radius: 18px;
+    box-shadow: inset 0 0 0 rgba(255,255,255,0.02);
+  }
+  .wo-form {
+    padding: 0.65rem;
+    background: none;
+    border: none;
+    backdrop-filter: none;
+  }
+  .wo-side {
+    padding: 0.75rem;
+    min-height: 260px;
+    background: none;
+    border: none;
+  }
+
+  @media (min-width: 760px) {
+    .wo-main {
+      display: block;
+    }
+    .wo-form {
+      min-width: 0;
+    }
+  }
+
   .wo-row {
-    display: flex;
-    gap: 0.6rem;
-    align-items: flex-end;
+    display:grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.95fr);
+    gap:0.85rem;
+    width:100%;
+    align-items: end;
   }
-
   .wo-field {
-    display: flex; flex-direction: column; gap: 0.4rem;
+    display:flex;
+    flex-direction:column;
+    gap:0.45rem;
+    min-width:0;
+    width:100%;
   }
-
-  .wo-field-label {
-    font-size: 0.58rem; font-weight: 700;
-    letter-spacing: 0.15em; color: rgba(245,158,11,0.5);
-    text-transform: uppercase;
+  @media (max-width: 820px) {
+    .wo-row {
+      grid-template-columns: 1fr;
+    }
   }
-
-  .wo-input-wrap {
-    position: relative; display: flex; align-items: center;
+  .wo-field-label{
+    font-size:0.6rem;
+    font-weight:700;
+    color:rgba(245,158,11,0.55);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
   }
-
-  .wo-input-icon {
-    position: absolute; left: 0.75rem; pointer-events: none;
+  .wo-input-wrap{
+    position:relative;
+    display:flex;
+    align-items:center;
   }
-
   .wo-input {
-    width: 100%;
-    padding: 0.7rem 2.5rem 0.7rem 2.2rem;
-    background: rgba(6,4,10,0.6);
-    border: 1px solid rgba(245,158,11,0.18);
-    border-radius: 7px;
-    color: var(--n-white);
+    width:100%;
+    padding:0.72rem 2.2rem 0.72rem 2rem;
+    background: rgba(255,255,255,0.03);
+    border:1px solid rgba(245,158,11,0.16);
+    border-radius:12px;
+    color:var(--n-white);
     font-family: 'Courier New', monospace;
-    font-size: 0.82rem;
-    transition: all 0.2s;
-    box-sizing: border-box;
+    font-size:0.82rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-
-  .wo-input::placeholder { color: rgba(245,158,11,0.25); }
-  .wo-input:focus { outline: none; border-color: rgba(245,158,11,0.45); box-shadow: 0 0 12px rgba(245,158,11,0.1); }
-  .wo-input.valid   { border-color: rgba(34,197,94,0.45); }
-  .wo-input.invalid { border-color: rgba(220,38,38,0.4); }
-
-  .wo-valid-icon { position: absolute; right: 0.75rem; }
-
-  /* ── Net selector ── */
-  .wo-net-selector { position: relative; }
-
-  .wo-net-btn {
-    width: 100%;
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.7rem 0.9rem;
-    background: rgba(6,4,10,0.6);
-    border: 1px solid rgba(245,158,11,0.18);
-    border-radius: 7px;
-    color: var(--n-white);
-    cursor: pointer; transition: all 0.2s;
-    text-align: left;
-  }
-
-  .wo-net-btn:hover:not(:disabled) {
-    border-color: rgba(245,158,11,0.4);
-    background: rgba(245,158,11,0.05);
-  }
-
-  .wo-net-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .wo-net-selector.open .wo-net-btn {
+  .wo-input:focus{
+    outline:none;
     border-color: rgba(245,158,11,0.45);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    box-shadow: 0 0 0 4px rgba(245,158,11,0.08);
+  }
+  .wo-input::placeholder{
+    color: rgba(245,158,11,0.3);
+  }
+  .wo-input-icon{
+    position:absolute;
+    left:0.9rem;
+  }
+  .wo-valid-icon{
+    position:absolute;
+    right:0.85rem;
+  }
+  .wo-input.invalid {
+    border-color: rgba(248,113,113,0.35);
   }
 
+  .wo-net-selector {
+    position: relative;
+    z-index: 60;
+  }
+  .wo-net-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:0.75rem;
+    padding:0.82rem 0.95rem;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(245,158,11,0.2);
+    border-radius:12px;
+    color:var(--n-white);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .wo-net-btn:hover {
+    border-color: rgba(245,158,11,0.35);
+    background: rgba(255,255,255,0.06);
+  }
+  .wo-net-dropdown{
+    position:absolute;
+    bottom:calc(100% + 0.5rem);
+    top:auto;
+    left:0;
+    right:0;
+    background:rgba(6,8,18,0.96);
+    border:1px solid rgba(245,158,11,0.22);
+    z-index:80;
+    border-radius:12px;
+    min-width: 100%;
+    max-height:240px;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    pointer-events: auto;
+    box-shadow:0 18px 40px rgba(0,0,0,0.35);
+  }
+  .wo-net-option{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:0.65rem;
+    padding:0.8rem 0.95rem;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    background:transparent;
+    color:rgba(226,232,240,0.75);
+    transition: background 0.2s;
+  }
+  .wo-net-option:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .wo-net-option:last-child { border-bottom: none; }
   .wo-net-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: rgba(245,158,11,0.3);
-    flex-shrink: 0;
-    transition: all 0.2s;
+    width:10px;
+    height:10px;
+    background: rgba(245,158,11,0.75);
+    border-radius:999px;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
   }
-
   .wo-net-dot.active {
     background: #22c55e;
-    box-shadow: 0 0 6px #22c55e;
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.12);
   }
+  .wo-net-name, .wo-net-opt-name { font-weight:700; color:var(--n-white); }
+  .wo-net-opt-cur { margin-left:auto; color:rgba(245,158,11,0.55); font-size:0.78rem; }
 
-  .wo-net-name {
-    flex: 1; font-size: 0.82rem; font-weight: 600;
-    color: var(--n-white);
+  .wo-actions{
+    display:flex;
+    gap:0.65rem;
+    margin-top:0.9rem;
+    flex-direction:column;
+    align-items:stretch;
+    width:100%;
   }
-
-  .wo-net-currency {
-    font-size: 0.65rem; font-weight: 700;
-    color: rgba(245,158,11,0.5);
-    background: rgba(245,158,11,0.08);
-    border: 1px solid rgba(245,158,11,0.15);
-    border-radius: 3px; padding: 0.1rem 0.4rem;
+  .wo-btn-search,
+  .wo-btn-reset,
+  .wo-btn-secondary {
+    min-width: 0;
   }
-
-  /* Dropdown */
-  .wo-net-dropdown {
-    position: absolute; top: 100%; left: 0; right: 0;
-    background: rgba(10,14,26,0.98);
-    border: 1px solid rgba(245,158,11,0.3);
-    border-top: none;
-    border-bottom-left-radius: 7px;
-    border-bottom-right-radius: 7px;
-    z-index: 50;
-    max-height: 260px; overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    animation: dropDown 0.15s ease-out;
+  .wo-btn-secondary {
+    width:100%;
+    min-height:3.2rem;
+    padding: 1rem 1rem;
+    background: rgba(59,130,246,0.16);
+    border:1px solid rgba(59,130,246,0.28);
+    border-radius:14px;
+    color:#bfdbfe;
+    font-weight:700;
+    transition: transform 0.2s, background 0.2s;
   }
-
-  @keyframes dropDown { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-
-  .wo-net-dropdown::-webkit-scrollbar { width: 4px; }
-  .wo-net-dropdown::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.2); border-radius: 2px; }
-
-  .wo-net-option {
-    width: 100%;
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.6rem 0.9rem;
-    background: transparent;
-    border: none; border-bottom: 1px solid rgba(245,158,11,0.06);
-    color: rgba(226,232,240,0.6);
-    cursor: pointer; transition: all 0.15s;
-    text-align: left;
-  }
-
-  .wo-net-option:last-child { border-bottom: none; }
-
-  .wo-net-option:hover {
-    background: rgba(245,158,11,0.07);
-    color: var(--n-white);
-  }
-
-  .wo-net-option.selected {
-    background: rgba(245,158,11,0.1);
-    color: var(--n-white);
-  }
-
-  .wo-net-opt-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
-  .wo-net-opt-cur  { font-size: 0.62rem; color: rgba(245,158,11,0.45); }
-
-  /* ── Acciones ── */
-  .wo-actions { display: flex; gap: 0.5rem; }
-
-  .wo-btn-search {
-    flex: 1; padding: 0.75rem 1rem;
-    background: rgba(245,158,11,0.08);
-    border: 1px solid rgba(245,158,11,0.25);
-    border-radius: 7px;
-    color: var(--n-gold2);
-    font-family: 'Cinzel', serif;
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-    transition: all 0.2s;
-  }
-
-  .wo-btn-search:hover:not(:disabled) {
-    background: rgba(245,158,11,0.15);
-    border-color: rgba(245,158,11,0.5);
-    box-shadow: 0 4px 16px rgba(245,158,11,0.15);
+  .wo-btn-secondary:hover {
     transform: translateY(-1px);
+    background: rgba(59,130,246,0.24);
   }
-
-  .wo-btn-search:disabled { opacity: 0.45; cursor: not-allowed; }
-
-  .wo-btn-reset {
-    display: flex; align-items: center; gap: 0.4rem;
-    padding: 0.75rem 1rem;
-    background: transparent;
-    border: 1px solid rgba(220,38,38,0.2);
-    border-radius: 7px;
-    color: rgba(220,38,38,0.5);
-    font-size: 0.75rem; font-weight: 700;
-    cursor: pointer; transition: all 0.2s;
+  .wo-btn-search{
+    width:100%;
+    padding:1rem 1rem;
+    min-height:3.2rem;
+    background:linear-gradient(90deg,var(--p-gold),var(--p-gold2));
+    border:1px solid rgba(245,158,11,0.3);
+    border-radius:14px;
+    color:var(--i-black);
+    font-family:'Cinzel',serif;
+    font-size:0.96rem;
+    font-weight:700;
+    letter-spacing:0.02em;
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
   }
-
+  .wo-btn-search:hover{
+    transform:translateY(-1px);
+    box-shadow:0 18px 40px rgba(245,158,11,0.18);
+    filter: saturate(1.05);
+  }
+  .wo-btn-reset{
+    width:100%;
+    padding:0.78rem 0.95rem;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(245,158,11,0.18);
+    border-radius:14px;
+    color:rgba(245,158,11,0.92);
+    font-weight:700;
+    transition: background 0.2s;
+  }
   .wo-btn-reset:hover {
-    background: rgba(220,38,38,0.08);
-    border-color: rgba(220,38,38,0.4);
-    color: #f87171;
+    background:rgba(255,255,255,0.08);
   }
 
-  /* ── Error ── */
-  .wo-error {
-    display: flex; align-items: center; gap: 0.5rem;
-    font-size: 0.78rem; color: #f87171;
-    padding: 0.6rem 0.85rem;
-    background: rgba(220,38,38,0.08);
-    border: 1px solid rgba(220,38,38,0.25);
-    border-radius: 6px;
+  .wo-results-note {
+    margin-top: 0.85rem;
+    font-size: 0.88rem;
+    color: rgba(226,232,240,0.78);
+  }
+  .wo-link-button {
+    background: transparent;
+    border: none;
+    color: var(--p-gold2);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
   }
 
-  /* ── Resultados ── */
-  .wo-results { display: flex; flex-direction: column; gap: 0.75rem; }
-
-  .wo-result-card {
-    background: rgba(245,158,11,0.05);
-    border: 1px solid rgba(245,158,11,0.15);
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex; flex-direction: column; gap: 0.75rem;
+  .wo-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 80;
   }
 
-  .wrc-row {
-    display: flex; gap: 1rem; flex-wrap: wrap;
+  .wo-modal-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, calc(100% - 32px));
+    background: rgba(6, 8, 18, 0.96);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 22px;
+    padding: 1.25rem 1.3rem;
+    z-index: 90;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
   }
 
-  .wrc-item {
-    display: flex; flex-direction: column; gap: 0.2rem; flex: 1;
+  .wo-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
-  .wrc-label {
-    font-size: 0.55rem; font-weight: 700;
-    letter-spacing: 0.15em; color: rgba(245,158,11,0.45);
+  .wo-modal-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--n-white);
+  }
+
+  .wo-modal-sub {
+    margin: 0.3rem 0 0;
+    font-size: 0.78rem;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  .wo-modal-copy {
+    color: rgba(226, 232, 240, 0.72);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .wo-modal-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .wo-modal-description {
+    margin: 0.8rem 0 1rem;
+    color: rgba(226, 232, 240, 0.78);
+  }
+
+  .wo-modal-field {
+    margin-bottom: 1rem;
+  }
+
+  .wo-modal-field-label {
+    margin-bottom: 0.65rem;
+    color: rgba(226, 232, 240, 0.7);
+    font-size: 0.75rem;
+    font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.09em;
   }
 
-  .wrc-value {
-    font-size: 0.85rem; color: var(--n-white); font-weight: 600;
+  .wo-faucet-net-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .wrc-balance {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0.6rem 0.75rem;
-    background: rgba(245,158,11,0.06);
-    border: 1px solid rgba(245,158,11,0.12);
-    border-radius: 6px;
+  .wo-modal-required {
+    margin-top: 0.45rem;
+    color: rgba(226, 232, 240, 0.7);
+    font-size: 0.78rem;
   }
 
-  .wrc-bal-label {
-    font-size: 0.58rem; font-weight: 700;
-    letter-spacing: 0.12em; color: rgba(245,158,11,0.5);
+  .wo-modal-input {
+    width: 100%;
+    padding: 0.95rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .wo-modal-input::placeholder {
+    color: rgba(226, 232, 240, 0.45);
+  }
+
+  .wo-modal-input:focus {
+    outline: none;
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .wo-faucet-net-btn {
+    flex: 1 1 45%;
+    min-width: 0;
+    padding: 0.75rem 0.85rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: transform 0.2s, background 0.2s, border-color 0.2s;
+    text-align: center;
+  }
+
+  .wo-faucet-net-btn.active {
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.32);
+    color: #ffffff;
+  }
+
+  .wo-faucet-net-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .wo-modal-heading {
+    margin: 0.6rem 0 0.35rem;
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  .wo-modal-body {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.82);
+  }
+
+  .wo-modal-tag {
+    display: inline-flex;
+    margin-bottom: 0.65rem;
+    padding: 0.18rem 0.7rem;
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    border-radius: 999px;
+    color: #bfdbfe;
+    font-size: 0.68rem;
+    font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.12em;
   }
 
-  .wrc-bal-value {
-    font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700;
-    color: var(--n-gold2); text-shadow: 0 0 12px rgba(245,158,11,0.3);
+  .wo-faucet-summary {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.95rem 1rem;
+    margin-bottom: 0.95rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
   }
 
-  .wrc-cur { font-size: 0.7rem; color: rgba(245,158,11,0.6); }
-
-  /* ── Secciones ── */
-  .wo-section { display: flex; flex-direction: column; gap: 0.5rem; }
-
-  .wo-section-title {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.68rem; font-weight: 700;
-    color: rgba(245,158,11,0.6); letter-spacing: 0.1em;
-    text-transform: uppercase; margin: 0;
+  .wo-faucet-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.88rem;
   }
 
-  .wo-empty-note {
-    font-size: 0.62rem; color: rgba(196,181,253,0.3);
-    font-weight: 400; text-transform: none; letter-spacing: 0;
+  .wo-faucet-row strong {
+    color: #ffffff;
+    font-weight: 700;
+    text-align: right;
+    word-break: break-all;
   }
 
-  /* Tokens */
-  .wo-tokens { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-
-  .wo-token {
-    display: flex; align-items: center; gap: 0.4rem;
-    background: rgba(147,51,234,0.08);
-    border: 1px solid rgba(147,51,234,0.2);
-    border-radius: 5px; padding: 0.35rem 0.65rem;
+  .wo-modal-note {
+    margin-top: 0.25rem;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.82rem;
   }
 
-  .wo-token-symbol { font-size: 0.72rem; font-weight: 700; color: #c4b5fd; }
-  .wo-token-balance { font-size: 0.7rem; color: rgba(196,181,253,0.55); }
-
-  /* Tx list */
-  .wo-txlist { display: flex; flex-direction: column; gap: 0.4rem; }
-
-  .wo-tx {
-    display: flex; align-items: center; gap: 0.65rem;
-    padding: 0.65rem 0.85rem;
-    background: rgba(6,4,10,0.5);
-    border: 1px solid rgba(245,158,11,0.08);
-    border-left: 3px solid rgba(245,158,11,0.3);
-    border-radius: 6px;
+  .wo-modal-address {
+    word-break: break-all;
+    margin: 0.5rem 0;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
   }
 
-  .wo-tx.incoming { border-left-color: #22c55e; }
-  .wo-tx.failed   { border-left-color: #dc2626; opacity: 0.7; }
-
-  .wo-tx-dir { flex-shrink: 0; }
-
-  .wo-tx-info { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
-  .wo-tx-hash { font-size: 0.7rem; color: rgba(196,181,253,0.5); }
-  .wo-tx-peer { font-size: 0.65rem; color: rgba(245,158,11,0.45); }
-
-  .wo-tx-amount { font-weight: 700; color: var(--n-gold2); font-size: 0.72rem; white-space: nowrap; }
-
-  .wo-tx-link {
-    color: rgba(196,181,253,0.35); text-decoration: none;
-    display: flex; align-items: center; transition: color 0.15s;
+  .wo-modal-actions {
+    display: grid;
+    gap: 0.75rem;
   }
 
-  .wo-tx-link:hover { color: #c4b5fd; }
+  .wo-modal-close {
+    background: transparent;
+    border: none;
+    color: rgba(226, 232, 240, 0.8);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
 
-  .spin { animation: spinAnim 0.8s linear infinite; }
-  @keyframes spinAnim { to { transform: rotate(360deg); } }
+  @media (max-width:520px){
+    .wo-actions{ flex-direction:column; }
+    .wo-btn-search, .wo-btn-reset{ width:100%; }
+  }
+
+  .wo-results{
+    display:flex;
+    flex-direction:column;
+    gap:0.95rem;
+  }
+  .wo-result-card{
+    background: linear-gradient(180deg, rgba(36,45,76,0.9), rgba(12,15,30,0.9));
+    border:1px solid rgba(245,158,11,0.14);
+    border-radius:14px;
+    padding:1rem;
+    box-shadow:0 18px 35px rgba(0,0,0,0.25);
+  }
+  .wrc-row{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom:0.9rem;
+  }
+  .wrc-label{
+    display:block;
+    font-size:0.57rem;
+    font-weight:700;
+    color:rgba(245,158,11,0.55);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    margin-bottom:0.3rem;
+  }
+  .wrc-value{
+    font-size:0.95rem;
+    color:#f8fafc;
+    font-weight:700;
+  }
+  .wrc-balance{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0.75rem 0.85rem;
+    background: rgba(255,255,255,0.04);
+    border-radius:12px;
+    border:1px solid rgba(245,158,11,0.12);
+  }
+  .wrc-bal-label{
+    font-size:0.62rem;
+    font-weight:700;
+    color:rgba(245,158,11,0.55);
+    text-transform:uppercase;
+  }
+  .wrc-bal-value{
+    font-family:'Cinzel',serif;
+    font-size:1.22rem;
+    font-weight:800;
+    color:var(--n-gold2);
+    text-shadow:0 0 18px rgba(245,158,11,0.25);
+  }
+
+  .wo-section{
+    display:flex;
+    flex-direction:column;
+    gap:0.55rem;
+    padding:0.85rem 0;
+    border-top:1px solid rgba(255,255,255,0.05);
+  }
+  .wo-section-title{
+    display:flex;
+    align-items:center;
+    gap:0.48rem;
+    font-size:0.7rem;
+    font-weight:800;
+    color:rgba(245,158,11,0.7);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+  .wo-empty-note{
+    font-size:0.65rem;
+    color:rgba(196,181,253,0.32);
+  }
+
+  .wo-token{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:0.4rem;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(147,51,234,0.16);
+    border-radius:12px;
+    padding:0.65rem 0.9rem;
+  }
+  .wo-token-symbol{
+    font-size:0.78rem;
+    font-weight:700;
+    color:#c4b5fd;
+  }
+  .wo-token-balance{
+    font-weight:700;
+    color:#f8fafc;
+  }
+
+  .wo-txlist{
+    display:flex;
+    flex-direction:column;
+    gap:0.5rem;
+  }
+  .wo-tx{
+    display:flex;
+    align-items:center;
+    gap:0.85rem;
+    padding:0.85rem 0.95rem;
+    background:rgba(255,255,255,0.03);
+    border-left:3px solid rgba(245,158,11,0.3);
+    border-radius:12px;
+  }
+  .wo-tx.incoming{ border-left-color:#22c55e; }
+  .wo-tx.failed{ border-left-color:#dc2626; opacity:0.78; }
+  .wo-tx-info{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:0.18rem;
+  }
+  .wo-tx-hash{
+    font-size:0.72rem;
+    color:rgba(226,232,240,0.7);
+  }
+  .wo-tx-peer{
+    font-size:0.68rem;
+    color:rgba(245,158,11,0.55);
+  }
+  .wo-tx-amount{
+    font-weight:700;
+    color:var(--n-gold2);
+    font-size:0.78rem;
+    white-space: nowrap;
+  }
+  .wo-tx-link{
+    color:rgba(196,181,253,0.45);
+    display:flex;
+    align-items:center;
+  }
+  .wo-tx-link:hover{ color:#c4b5fd; }
+
+  .wo-error{
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    font-size:0.82rem;
+    color:#f87171;
+    padding:0.75rem 0.95rem;
+    background:rgba(248,113,113,0.12);
+    border:1px solid rgba(248,113,113,0.24);
+    border-radius:12px;
+  }
+
+  .spin{ animation: spinAnim 0.8s linear infinite; }
+  @keyframes spinAnim{ to{ transform: rotate(360deg); } }
 </style>

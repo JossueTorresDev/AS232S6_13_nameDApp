@@ -9,6 +9,17 @@
       "_environment.js"
     ]
   },
+  "_WatchOnly.svelte_svelte_type_style_lang.js": {
+    "file": "chunks/WatchOnly.svelte_svelte_type_style_lang.js",
+    "name": "WatchOnly.svelte_svelte_type_style_lang",
+    "imports": [
+      "_index.js",
+      "_transaction.store.js"
+    ],
+    "css": [
+      "_app/immutable/assets/WatchOnly.CFSrlRCr.css"
+    ]
+  },
   "_environment.js": {
     "file": "chunks/environment.js",
     "name": "environment"
@@ -23,14 +34,6 @@
     "imports": [
       "_index.js",
       "_ssr.js"
-    ]
-  },
-  "_history.service.js": {
-    "file": "chunks/history.service.js",
-    "name": "history.service",
-    "imports": [
-      "_index.js",
-      "_transaction.store.js"
     ]
   },
   "_index.js": {
@@ -127,7 +130,7 @@
     "imports": [
       "_ssr.js",
       "_transaction.store.js",
-      "_history.service.js",
+      "_WatchOnly.svelte_svelte_type_style_lang.js",
       "_exports.js",
       "_utils.js",
       "_state.svelte.js",
@@ -135,7 +138,7 @@
       "_favorites.store.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.BcGiPL7_.css"
+      "_app/immutable/assets/_layout.DL4DT6Nv.css"
     ]
   },
   "src/routes/(app)/dashboard/+page.svelte": {
@@ -172,13 +175,13 @@
     "imports": [
       "_ssr.js",
       "_transaction.store.js",
-      "_history.service.js",
+      "_WatchOnly.svelte_svelte_type_style_lang.js",
       "_exports.js",
       "_utils.js",
       "_state.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.IVnxKw0H.css"
+      "_app/immutable/assets/_page.DxOPkzBA.css"
     ]
   },
   "src/routes/intro/+page.svelte": {

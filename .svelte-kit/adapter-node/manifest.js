@@ -10,7 +10,7 @@ return {
 	assets: new Set(["luffy.svg","manifest.json"]),
 	mimeTypes: {".svg":"image/svg+xml",".json":"application/json"},
 	_: {
-		client: {start:"_app/immutable/entry/start.Bqr7zWS0.js",app:"_app/immutable/entry/app.6Xd6ROd2.js",imports:["_app/immutable/entry/start.Bqr7zWS0.js","_app/immutable/chunks/Bcn0cbbV.js","_app/immutable/chunks/OF6E9Be3.js","_app/immutable/chunks/CwMMMJpk.js","_app/immutable/entry/app.6Xd6ROd2.js","_app/immutable/chunks/OF6E9Be3.js","_app/immutable/chunks/0NO40-1G.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.sP6D84j_.js",app:"_app/immutable/entry/app.BDyuPonA.js",imports:["_app/immutable/entry/start.sP6D84j_.js","_app/immutable/chunks/C5OE3Ra0.js","_app/immutable/chunks/Gm8cJEhR.js","_app/immutable/chunks/D6FbRZh4.js","_app/immutable/entry/app.BDyuPonA.js","_app/immutable/chunks/Gm8cJEhR.js","_app/immutable/chunks/DxI3WT-8.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
