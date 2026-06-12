@@ -17,7 +17,7 @@
       "_transaction.store.js"
     ],
     "css": [
-      "_app/immutable/assets/WatchOnly.CFSrlRCr.css"
+      "_app/immutable/assets/WatchOnly.cQB5h3GG.css"
     ]
   },
   "_environment.js": {
@@ -27,6 +27,13 @@
   "_exports.js": {
     "file": "chunks/exports.js",
     "name": "exports"
+  },
+  "_faucet.store.js": {
+    "file": "chunks/faucet.store.js",
+    "name": "faucet.store",
+    "imports": [
+      "_index.js"
+    ]
   },
   "_favorites.store.js": {
     "file": "chunks/favorites.store.js",
@@ -51,6 +58,10 @@
       "_ssr2.js",
       "_environment.js"
     ]
+  },
+  "_network.js": {
+    "file": "chunks/network.js",
+    "name": "network"
   },
   "_shared.js": {
     "file": "chunks/shared.js",
@@ -79,7 +90,8 @@
     "file": "chunks/transaction.store.js",
     "name": "transaction.store",
     "imports": [
-      "_index.js"
+      "_index.js",
+      "_network.js"
     ]
   },
   "_utils.js": {
@@ -131,10 +143,12 @@
       "_ssr.js",
       "_transaction.store.js",
       "_WatchOnly.svelte_svelte_type_style_lang.js",
+      "_network.js",
       "_exports.js",
       "_utils.js",
       "_state.svelte.js",
       "_index.js",
+      "_faucet.store.js",
       "_favorites.store.js"
     ],
     "css": [
@@ -176,12 +190,31 @@
       "_ssr.js",
       "_transaction.store.js",
       "_WatchOnly.svelte_svelte_type_style_lang.js",
+      "_network.js",
       "_exports.js",
       "_utils.js",
-      "_state.svelte.js"
+      "_state.svelte.js",
+      "_faucet.store.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.DxOPkzBA.css"
+      "_app/immutable/assets/_page.DMPxju1K.css"
+    ]
+  },
+  "src/routes/faucet/+page.svelte": {
+    "file": "entries/pages/faucet/_page.svelte.js",
+    "name": "entries/pages/faucet/_page.svelte",
+    "src": "src/routes/faucet/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_ssr.js",
+      "_exports.js",
+      "_utils.js",
+      "_state.svelte.js",
+      "_network.js",
+      "_faucet.store.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.DyNLUkdt.css"
     ]
   },
   "src/routes/intro/+page.svelte": {

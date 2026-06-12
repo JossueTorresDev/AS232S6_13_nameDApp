@@ -11,6 +11,18 @@
   $: if (browser && $walletStore.connected) goto('/dashboard');
 </script>
 
+<!-- Acceso rápido al faucet público (fuera del card, sin necesidad de wallet) -->
+<div class="quick-faucet-access" aria-label="Acceso rápido al faucet">
+  <a href="/faucet" class="qfa-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/>
+      <path d="M2 12l10 5 10-5"/>
+    </svg>
+    Faucet Público
+  </a>
+</div>
+
 <div class="scene">
   <div class="card-luffy">
     <div class="card-border-anim"></div>
@@ -544,5 +556,35 @@
     .abilities-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* ── Acceso rápido al faucet ── */
+  .quick-faucet-access {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 50;
+  }
+  .qfa-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 1rem;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.28);
+    border-radius: 8px;
+    color: var(--p-gold2);
+    font-family: 'Pirata One', cursive;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .qfa-btn:hover {
+    background: rgba(245,158,11,0.2);
+    box-shadow: 0 4px 20px rgba(245,158,11,0.2);
+    transform: translateY(-1px);
   }
 </style>

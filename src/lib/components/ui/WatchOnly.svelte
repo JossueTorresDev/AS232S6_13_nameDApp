@@ -4,6 +4,7 @@
   import { shortAddress, formatBalance } from '$lib/utils/format';
   import { fetchOnChainHistory, fetchTokenBalances } from '$lib/services/onchain.service';
   import { buildFaucetUrl, getFaucetInfoForNetwork, type FaucetInfo } from '$lib/services/faucet.service';
+  import { fetchBalanceAllNetworks, type NetworkBalance } from '$lib/services/public-faucet.service';
   import type { NetworkInfo }    from '$lib/types/network';
   import type { OnChainTx }      from '$lib/services/onchain.service';
   import type { TokenBalance }   from '$lib/services/onchain.service';
@@ -23,10 +24,18 @@
   let faucetInfo: FaucetInfo | undefined;
   let faucetNetworks: NetworkInfo[] = [];
 
+  // ── Multi-network balance ──────────────────────────────────────────────────
+  let multiModalOpen    = false;
+  let multiLoading      = false;
+  let multiError        = '';
+  let multiResults: NetworkBalance[] = [];
+  let multiAddress      = '';
+
   $: addressValid = ethers.isAddress(inputAddress);
   $: evmNets = AVAILABLE_NETWORKS.filter(n => n.type === 'EVM');
   $: faucetNetworks = AVAILABLE_NETWORKS.filter(n => getFaucetInfoForNetwork(n));
   $: faucetInfo = selectedFaucetNet ? getFaucetInfoForNetwork(selectedFaucetNet) : undefined;
+  $: multiNonZero = multiResults.filter(r => r.status === 'ok' && r.rawBalance > 0n);
 
   function selectNet(net: NetworkInfo) {
     selectedNet = net;
@@ -97,6 +106,33 @@
     txHistory = []; tokens = []; searched = false; error = '';
     resultsModalOpen = false;
   }
+
+  // ── Multi-network balance handlers ─────────────────────────────────────────
+  async function lookupAllNetworks() {
+    multiAddress = inputAddress;
+    if (!ethers.isAddress(multiAddress)) {
+      multiError = 'Dirección inválida';
+      return;
+    }
+    multiError   = '';
+    multiLoading = true;
+    multiResults = [];
+    multiModalOpen = true;
+
+    try {
+      multiResults = await fetchBalanceAllNetworks(multiAddress);
+    } catch (e) {
+      multiError = e instanceof Error ? e.message : 'Error al consultar redes';
+    } finally {
+      multiLoading = false;
+    }
+  }
+
+  function closeMultiModal() {
+    multiModalOpen = false;
+    multiResults   = [];
+    multiError     = '';
+  }
 </script>
 
 {#if netOpen}
@@ -166,6 +202,108 @@
       </button>
       <button class="wo-btn-secondary" on:click={reloadPage} type="button">Recargar página</button>
       <button class="wo-btn-reset" on:click={closeFaucetModal} type="button">Cancelar</button>
+    </div>
+  </div>
+{/if}
+
+{#if multiModalOpen}
+  <div class="wo-modal-backdrop" on:click={closeMultiModal}></div>
+  <div class="wo-modal-card wo-modal-wide" role="dialog" aria-modal="true" aria-label="Saldo en múltiples redes">
+    <div class="wo-modal-header">
+      <div>
+        <p class="wo-modal-title">Consulta Masiva · Múltiples Redes</p>
+        <p class="wo-modal-sub">{shortAddress(multiAddress)} · {multiResults.length} redes EVM</p>
+      </div>
+      <button class="wo-modal-close" type="button" on:click={closeMultiModal} aria-label="Cerrar modal">×</button>
+    </div>
+
+    <div class="wo-modal-copy">
+      {#if multiLoading}
+        <div class="multi-loading-grid">
+          {#each AVAILABLE_NETWORKS.filter(n => n.type === 'EVM') as net}
+            <div class="multi-net-skeleton">
+              <span class="skeleton-dot"></span>
+              <span class="skeleton-name">{net.name}</span>
+              <span class="skeleton-bar"></span>
+            </div>
+          {/each}
+        </div>
+      {:else if multiError}
+        <div class="wo-error" role="alert">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {multiError}
+        </div>
+      {:else}
+        <!-- Resumen -->
+        <div class="multi-summary-row">
+          <div class="multi-stat">
+            <span class="multi-stat-label">REDES CON SALDO</span>
+            <span class="multi-stat-val gold">{multiNonZero.length} / {multiResults.length}</span>
+          </div>
+          <div class="multi-stat">
+            <span class="multi-stat-label">ERRORES</span>
+            <span class="multi-stat-val red">{multiResults.filter(r => r.status === 'error').length}</span>
+          </div>
+          <div class="multi-stat">
+            <span class="multi-stat-label">DIRECCIÓN</span>
+            <span class="multi-stat-val mono">{shortAddress(multiAddress)}</span>
+          </div>
+        </div>
+
+        <!-- Lista de resultados -->
+        <div class="multi-net-list" role="list">
+          {#each multiResults as row (row.network.chainId)}
+            <div
+              class="multi-net-row"
+              class:has-balance={row.status === 'ok' && row.rawBalance > 0n}
+              class:net-error={row.status === 'error'}
+              role="listitem"
+            >
+              <div class="mnr-left">
+                <span
+                  class="mnr-dot"
+                  class:dot-ok={row.status === 'ok'}
+                  class:dot-err={row.status === 'error'}
+                ></span>
+                <div class="mnr-info">
+                  <span class="mnr-name">{row.network.name}</span>
+                  <span class="mnr-label">{row.network.label} · chainId {row.network.chainId}</span>
+                </div>
+              </div>
+              <div class="mnr-right">
+                {#if row.status === 'error'}
+                  <span class="mnr-error">{row.error ?? 'Error'}</span>
+                {:else}
+                  <span class="mnr-balance" class:nonzero={row.rawBalance > 0n}>
+                    {parseFloat(row.balance).toFixed(6)}
+                    <span class="mnr-cur">{row.network.currency}</span>
+                  </span>
+                  {#if row.network.blockExplorer}
+                    <a
+                      class="mnr-explorer"
+                      href="{row.network.blockExplorer}/address/{multiAddress}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Ver en explorador"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </a>
+                  {/if}
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="wo-modal-actions">
+      <button class="wo-btn-reset" type="button" on:click={closeMultiModal}>Cerrar</button>
     </div>
   </div>
 {/if}
@@ -368,6 +506,27 @@
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             Consultar Dirección
+          {/if}
+        </button>
+
+        <button
+          class="wo-btn-multi"
+          on:click={lookupAllNetworks}
+          disabled={!addressValid || multiLoading}
+          aria-label="Consultar saldo en todas las redes"
+        >
+          {#if multiLoading}
+            <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+            Consultando redes...
+          {:else}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Ver en Todas las Redes
           {/if}
         </button>
 
@@ -1077,4 +1236,197 @@
 
   .spin{ animation: spinAnim 0.8s linear infinite; }
   @keyframes spinAnim{ to{ transform: rotate(360deg); } }
+
+  /* ── Multi-network balance ── */
+  .wo-modal-wide {
+    width: min(640px, calc(100% - 32px));
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .wo-btn-multi {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    min-height: 3rem;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.28);
+    border-radius: 14px;
+    color: #93c5fd;
+    font-family: 'Cinzel', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+  .wo-btn-multi:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: rgba(59,130,246,0.2);
+    box-shadow: 0 8px 24px rgba(59,130,246,0.15);
+  }
+  .wo-btn-multi:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Skeleton de carga */
+  .multi-loading-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .multi-net-skeleton {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.95rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 0.9; }
+  }
+  .skeleton-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(245,158,11,0.4);
+    flex-shrink: 0;
+  }
+  .skeleton-name {
+    font-size: 0.78rem;
+    color: rgba(226,232,240,0.5);
+    flex: 1;
+  }
+  .skeleton-bar {
+    width: 80px; height: 10px;
+    border-radius: 6px;
+    background: rgba(245,158,11,0.15);
+  }
+
+  /* Resumen superior */
+  .multi-summary-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .multi-stat {
+    flex: 1;
+    min-width: 90px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .multi-stat-label {
+    font-size: 0.53rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: rgba(245,158,11,0.45);
+    text-transform: uppercase;
+  }
+  .multi-stat-val {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--n-white);
+  }
+  .multi-stat-val.gold { color: var(--n-gold2); }
+  .multi-stat-val.red  { color: #f87171; }
+
+  /* Lista de redes */
+  .multi-net-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .multi-net-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 0.9rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .multi-net-row.has-balance {
+    background: rgba(245,158,11,0.05);
+    border-color: rgba(245,158,11,0.18);
+  }
+  .multi-net-row.net-error {
+    opacity: 0.55;
+  }
+  .mnr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+  .mnr-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.2);
+  }
+  .mnr-dot.dot-ok  { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+  .mnr-dot.dot-err { background: #f87171; }
+  .mnr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+  .mnr-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--n-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mnr-label {
+    font-size: 0.6rem;
+    color: rgba(226,232,240,0.4);
+    white-space: nowrap;
+  }
+  .mnr-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .mnr-balance {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(226,232,240,0.5);
+  }
+  .mnr-balance.nonzero {
+    color: var(--n-gold2);
+    text-shadow: 0 0 10px rgba(245,158,11,0.3);
+  }
+  .mnr-cur {
+    font-size: 0.65rem;
+    color: rgba(245,158,11,0.5);
+    margin-left: 0.2rem;
+  }
+  .mnr-error {
+    font-size: 0.68rem;
+    color: #f87171;
+  }
+  .mnr-explorer {
+    color: rgba(147,197,253,0.4);
+    display: flex;
+    align-items: center;
+  }
+  .mnr-explorer:hover { color: #93c5fd; }
 </style>

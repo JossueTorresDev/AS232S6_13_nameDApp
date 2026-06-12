@@ -1,12 +1,14 @@
 import { c as create_ssr_component, a as each, e as escape, b as subscribe, o as onDestroy, v as validate_component } from "../../../chunks/ssr.js";
 import { w as walletStore } from "../../../chunks/transaction.store.js";
 import "../../../chunks/WatchOnly.svelte_svelte_type_style_lang.js";
+import "../../../chunks/network.js";
 import "@sveltejs/kit/internal";
 import "../../../chunks/exports.js";
 import "../../../chunks/utils.js";
 import "@sveltejs/kit/internal/server";
 import "../../../chunks/state.svelte.js";
 import { w as writable } from "../../../chunks/index.js";
+import "../../../chunks/faucet.store.js";
 import "../../../chunks/favorites.store.js";
 const sidebarStore = writable("dashboard");
 const css$1 = {
