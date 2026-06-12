@@ -6,22 +6,8 @@
   import ErrorBox         from '$lib/components/ui/ErrorBox.svelte';
   import WatchOnly        from '$lib/components/ui/WatchOnly.svelte';
 
-  let watchOnlyRef: any;
-
   $: if (browser && $walletStore.connected) goto('/dashboard');
 </script>
-
-<!-- Acceso rápido al faucet público (fuera del card, sin necesidad de wallet) -->
-<div class="quick-faucet-access" aria-label="Acceso rápido al faucet">
-  <a href="/faucet" class="qfa-btn">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-      <path d="M2 17l10 5 10-5"/>
-      <path d="M2 12l10 5 10-5"/>
-    </svg>
-    Faucet Público
-  </a>
-</div>
 
 <div class="scene">
   <div class="card-luffy">
@@ -64,9 +50,14 @@
         <p class="title-sub">Monkey D. Luffy · Rey de los Piratas</p>
       </div>
       <div class="header-actions">
-        <button class="btn-faucet" type="button" on:click={() => watchOnlyRef?.openFaucetModal()}>
-          ABRIR FAUCET
-        </button>
+        <a href="/faucet" class="btn-faucet">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+          FAUCET PÚBLICO
+        </a>
         <button class="btn-connect" on:click={connectWallet} disabled={$walletStore.loading}>
           {#if $walletStore.loading}
             <span class="btn-bg"></span>
@@ -172,7 +163,7 @@
       <ErrorBox message={$walletStore.error} />
 
       <div class="watch-block">
-        <WatchOnly bind:this={watchOnlyRef} />
+        <WatchOnly />
       </div>
     </div>
 

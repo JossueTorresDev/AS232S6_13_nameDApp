@@ -1,6 +1,6 @@
 ﻿<script lang="ts">
   import { ethers }              from 'ethers';
-  import { AVAILABLE_NETWORKS }  from '$lib/constants/network';
+  import { AVAILABLE_NETWORKS, MULTIBALANCE_NETWORKS }  from '$lib/constants/network';
   import { shortAddress, formatBalance } from '$lib/utils/format';
   import { fetchOnChainHistory, fetchTokenBalances } from '$lib/services/onchain.service';
   import { buildFaucetUrl, getFaucetInfoForNetwork, type FaucetInfo } from '$lib/services/faucet.service';
@@ -220,7 +220,7 @@
     <div class="wo-modal-copy">
       {#if multiLoading}
         <div class="multi-loading-grid">
-          {#each AVAILABLE_NETWORKS.filter(n => n.type === 'EVM') as net}
+          {#each MULTIBALANCE_NETWORKS as net}
             <div class="multi-net-skeleton">
               <span class="skeleton-dot"></span>
               <span class="skeleton-name">{net.name}</span>

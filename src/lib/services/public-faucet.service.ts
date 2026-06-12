@@ -5,7 +5,7 @@
 
 import { ethers }                from 'ethers';
 import type { NetworkInfo }      from '$lib/types/network';
-import { AVAILABLE_NETWORKS }    from '$lib/constants/network';
+import { AVAILABLE_NETWORKS, MULTIBALANCE_NETWORKS } from '$lib/constants/network';
 import { FAUCET_CONTRACT, getFaucetContractAddress, isFaucetContractAvailable } from '$lib/constants/faucet-contract';
 import { faucetStore }           from '$lib/stores/faucet.store';
 import type { FaucetRequest }    from '$lib/stores/faucet.store';
@@ -31,7 +31,7 @@ export async function fetchBalanceAllNetworks(
     throw new Error('Dirección inválida');
   }
 
-  const evmNetworks = AVAILABLE_NETWORKS.filter(n => n.type === 'EVM');
+  const evmNetworks = MULTIBALANCE_NETWORKS;
 
   const results = await Promise.allSettled(
     evmNetworks.map(async (network): Promise<NetworkBalance> => {

@@ -138,6 +138,19 @@ export const AVAILABLE_NETWORKS: NetworkInfo[] = [
 export const UTXO_NETWORKS = AVAILABLE_NETWORKS.filter(n => n.type === 'UTXO');
 export const EVM_NETWORKS = AVAILABLE_NETWORKS.filter(n => n.type === 'EVM');
 
+/**
+ * Redes EVM con RPC públicos estables.
+ * Usadas exclusivamente para la consulta masiva de saldo (multi-network balance).
+ * Se excluyen las redes con RPCs caídos, con API key requerida o deprecadas.
+ */
+export const MULTIBALANCE_NETWORKS: NetworkInfo[] = [
+  ROLLUX,
+  SYSCOIN_NEVM,
+  ZKSYS_TESTNET,
+  ETHEREUM_HOODI,
+  ETHEREUM_SEPOLIA,
+];
+
 export const WALLET_ERRORS = {
   NOT_DETECTED: 'Pali Wallet no detectada. Instálala como extensión del navegador.',
   CONNECTION_FAILED: 'Error al conectar la wallet',

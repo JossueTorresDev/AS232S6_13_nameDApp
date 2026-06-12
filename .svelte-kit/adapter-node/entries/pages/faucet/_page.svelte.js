@@ -58,6 +58,22 @@ const FAUCET_CONTRACT = {
       stateMutability: "view",
       type: "function"
     },
+    // totalFunded() → uint256
+    {
+      inputs: [],
+      name: "totalFunded",
+      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+      stateMutability: "view",
+      type: "function"
+    },
+    // fund() — recarga pública payable
+    {
+      inputs: [],
+      name: "fund",
+      outputs: [],
+      stateMutability: "payable",
+      type: "function"
+    },
     // Event FaucetDrip
     {
       anonymous: false,
@@ -69,14 +85,24 @@ const FAUCET_CONTRACT = {
       ],
       name: "FaucetDrip",
       type: "event"
+    },
+    // Event FaucetFunded
+    {
+      anonymous: false,
+      inputs: [
+        { indexed: true, internalType: "address", name: "funder", type: "address" },
+        { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+      ],
+      name: "FaucetFunded",
+      type: "event"
     }
   ],
   /** chainId → dirección del contrato desplegado */
   addresses: {
-    11155111: "0x0000000000000000000000000000000000000000",
-    // Sepolia  — reemplaza tras desplegar
-    560048: "0x0000000000000000000000000000000000000000"
-    // Hoodi    — reemplaza tras desplegar
+    11155111: "0x34ebC75feE889806e27b07Abd7636249d3a18810",
+    // Sepolia  ✅ desplegado
+    560048: "0xe8c923FaB7C919A7B66963e9eD8A90a33A8D6600"
+    // Hoodi    ✅ desplegado
   }
 };
 function getFaucetContractAddress(chainId) {
