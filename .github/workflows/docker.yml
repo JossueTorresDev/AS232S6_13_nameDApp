@@ -7,14 +7,11 @@ on:
       - develop
 
 env:
-  # 👇 Aquí puedes poner el nombre exacto que quieres para tu imagen en Docker Hub
-  # Ejemplo: jossuedev/mi-dapp-vallegrande
   IMAGE_NAME: jossuetorres/dapp-onepiece
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    # Ya no necesitamos permisos especiales porque empujaremos a Docker Hub, no a GHCR
 
     steps:
       - name: Checkout repository
@@ -45,5 +42,12 @@ jobs:
 
       - name: Trigger Render deploy
         if: github.ref == 'refs/heads/main'
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "⚠️  RENDER_DEPLOY_HOOK_URL not set — skipping Render trigger"
+          else
+            curl --fail -X POST "$RENDER_HOOK"
+            echo "✅ Render deploy triggered"
+          fi
